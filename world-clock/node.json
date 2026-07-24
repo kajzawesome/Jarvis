@@ -1,0 +1,10 @@
+{
+  "id": "world-clock",
+  "label": "WORLD CLOCK",
+  "collector": "./collector.js",
+  "collectorFn": "getClocks",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 15000,
+  "defaultSize": { "w": 3, "h": 3 }
+}

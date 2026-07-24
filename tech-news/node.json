@@ -1,0 +1,10 @@
+{
+  "id": "tech-news",
+  "label": "TECH NEWS",
+  "collector": "./collector.js",
+  "collectorFn": "getStories",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 600000,
+  "defaultSize": { "w": 4, "h": 6 }
+}

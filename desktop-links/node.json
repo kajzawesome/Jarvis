@@ -1,0 +1,10 @@
+{
+  "id": "desktop-links",
+  "label": "LINKS",
+  "collector": "./collector.js",
+  "collectorFn": "getLinks",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 0,
+  "defaultSize": { "w": 4, "h": 4 }
+}

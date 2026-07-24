@@ -1,0 +1,10 @@
+{
+  "id": "weather",
+  "label": "WEATHER",
+  "collector": "./collector.js",
+  "collectorFn": "getWeather",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 1800000,
+  "defaultSize": { "w": 3, "h": 3 }
+}

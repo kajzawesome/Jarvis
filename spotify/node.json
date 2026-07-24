@@ -1,0 +1,10 @@
+{
+  "id": "spotify",
+  "label": "SPOTIFY",
+  "collector": "./collector.js",
+  "collectorFn": "getNowPlaying",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 10000,
+  "defaultSize": { "w": 4, "h": 4 }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "jarvis",
+  "version": "0.1.0",
+  "description": "J.A.R.V.I.S. desktop HUD - node-based dashboard covering pc-stats, minecraft-server, productivity, and more",
+  "main": "dashboard/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "gridstack": "^11.0.1",
+    "openrgb-sdk": "^0.6.0",
+    "systeminformation": "^5.23.5"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0"
+  }
+}

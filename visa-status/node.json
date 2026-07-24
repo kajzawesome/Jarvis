@@ -1,0 +1,10 @@
+{
+  "id": "visa-status",
+  "label": "VISA STATUS",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 3600000,
+  "defaultSize": { "w": 4, "h": 4 }
+}

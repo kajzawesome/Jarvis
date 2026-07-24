@@ -1,0 +1,10 @@
+{
+  "id": "system-health",
+  "label": "SYSTEM HEALTH",
+  "collector": "./collector.js",
+  "collectorFn": "getHealth",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 60000,
+  "defaultSize": { "w": 4, "h": 6 }
+}

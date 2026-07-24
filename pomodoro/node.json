@@ -1,0 +1,10 @@
+{
+  "id": "pomodoro",
+  "label": "FOCUS TIMER",
+  "collector": "./collector.js",
+  "collectorFn": "getState",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 1000,
+  "defaultSize": { "w": 3, "h": 4 }
+}

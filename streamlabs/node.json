@@ -1,0 +1,10 @@
+{
+  "id": "streamlabs",
+  "label": "STREAMLABS",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 15000,
+  "defaultSize": { "w": 3, "h": 3 }
+}

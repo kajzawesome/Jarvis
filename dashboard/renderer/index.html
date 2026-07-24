@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>J.A.R.V.I.S</title>
+    <link rel="stylesheet" href="../../node_modules/gridstack/dist/gridstack.min.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="hud-bg">
+      <div class="hud-bg-grid"></div>
+      <div class="hud-bg-scan"></div>
+      <div class="hud-bg-glow"></div>
+    </div>
+    <div class="app-shell">
+      <div class="topbar">
+        <div class="brand">J.A.R.V.I.S</div>
+        <div class="clock" id="clock"></div>
+        <div class="spacer"></div>
+        <button id="edit-toggle">EDIT LAYOUT</button>
+        <select id="layout-select"></select>
+        <button id="save-layout-btn">SAVE ALL AS...</button>
+        <button id="autostart-toggle">AUTOSTART</button>
+        <div class="win-controls">
+          <button id="min-btn" title="Minimize">_</button>
+          <button id="close-btn" class="close-btn" title="Hide">X</button>
+        </div>
+      </div>
+      <div class="body-row">
+        <div class="palette" id="palette">
+          <h3>NODES</h3>
+          <div id="palette-list"></div>
+        </div>
+        <div class="grid-wrap">
+          <div class="grid-stack" id="grid"></div>
+        </div>
+      </div>
+    </div>
+    <div class="toast-stack" id="toast-stack"></div>
+
+    <script src="../../node_modules/gridstack/dist/gridstack-all.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

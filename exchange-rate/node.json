@@ -1,0 +1,10 @@
+{
+  "id": "exchange-rate",
+  "label": "USD/BRL",
+  "collector": "./collector.js",
+  "collectorFn": "getRate",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 3600000,
+  "defaultSize": { "w": 3, "h": 3 }
+}

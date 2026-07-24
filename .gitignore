@@ -1,0 +1,5 @@
+# Real secrets live here - .env.example is the tracked template
+.env
+
+# Regenerable
+node_modules/

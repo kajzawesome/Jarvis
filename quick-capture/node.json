@@ -1,0 +1,10 @@
+{
+  "id": "quick-capture",
+  "label": "QUICK CAPTURE",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 30000,
+  "defaultSize": { "w": 3, "h": 2 }
+}

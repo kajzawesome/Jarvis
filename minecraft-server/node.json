@@ -1,0 +1,10 @@
+{
+  "id": "minecraft-server",
+  "label": "MC SERVER",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 10000,
+  "defaultSize": { "w": 4, "h": 4 }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "weather-alerts",
+  "label": "WEATHER ALERTS",
+  "collector": "./collector.js",
+  "collectorFn": "getAlerts",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 300000,
+  "defaultSize": { "w": 4, "h": 3 }
+}

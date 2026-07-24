@@ -1,0 +1,10 @@
+{
+  "id": "router-network",
+  "label": "ROUTER",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 30000,
+  "defaultSize": { "w": 4, "h": 4 }
+}

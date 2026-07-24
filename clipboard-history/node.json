@@ -1,0 +1,10 @@
+{
+  "id": "clipboard-history",
+  "label": "CLIPBOARD",
+  "collector": "./collector.js",
+  "collectorFn": "getHistory",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 2000,
+  "defaultSize": { "w": 4, "h": 4 }
+}

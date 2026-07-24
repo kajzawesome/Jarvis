@@ -1,0 +1,50 @@
+{
+  "presets": {
+    "default": {
+      "0": [],
+      "1": [
+        {
+          "id": "desktop-links",
+          "x": 0,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        {
+          "id": "pc-stats",
+          "x": 4,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        {
+          "id": "minecraft-server",
+          "x": 8,
+          "y": 0,
+          "w": 4,
+          "h": 4
+        },
+        {
+          "id": "productivity",
+          "x": 0,
+          "y": 4,
+          "w": 4,
+          "h": 5
+        }
+      ]
+    },
+    "focus": {
+      "0": [],
+      "1": [
+        {
+          "id": "productivity",
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        }
+      ]
+    }
+  },
+  "activePreset": "default"
+}

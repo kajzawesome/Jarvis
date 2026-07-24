@@ -1,0 +1,10 @@
+{
+  "id": "google-calendar",
+  "label": "CALENDAR",
+  "collector": "./collector.js",
+  "collectorFn": "getEvents",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 300000,
+  "defaultSize": { "w": 4, "h": 4 }
+}

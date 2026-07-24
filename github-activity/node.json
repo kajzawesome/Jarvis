@@ -1,0 +1,10 @@
+{
+  "id": "github-activity",
+  "label": "GITHUB",
+  "collector": "./collector.js",
+  "collectorFn": "getActivity",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 120000,
+  "defaultSize": { "w": 4, "h": 7 }
+}

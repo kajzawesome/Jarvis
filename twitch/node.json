@@ -1,0 +1,10 @@
+{
+  "id": "twitch",
+  "label": "TWITCH",
+  "collector": "./collector.js",
+  "collectorFn": "getStreamStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 60000,
+  "defaultSize": { "w": 4, "h": 3 }
+}

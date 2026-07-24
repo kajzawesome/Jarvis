@@ -1,0 +1,10 @@
+{
+  "id": "pc-stats",
+  "label": "PC STATS",
+  "collector": "./collector.js",
+  "collectorFn": "getStats",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 4000,
+  "defaultSize": { "w": 4, "h": 4 }
+}

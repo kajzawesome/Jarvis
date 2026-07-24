@@ -1,0 +1,10 @@
+{
+  "id": "network-speed",
+  "label": "NET SPEED",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 0,
+  "defaultSize": { "w": 3, "h": 3 }
+}
