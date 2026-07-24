@@ -277,12 +277,21 @@ autostartBtn.addEventListener('click', async () => {
   autostartBtn.classList.toggle('active', on);
 });
 
-document.getElementById('layout-select').addEventListener('change', (e) => {
-  layoutsData.activePreset = e.target.value;
+function switchPreset(name) {
+  if (!layoutsData.presets[name]) return false;
+  layoutsData.activePreset = name;
   writeLayouts(layoutsData);
   applyLayout(itemsForThisScreen(layoutsData));
   ipcRenderer.send('layouts-changed');
-});
+  document.getElementById('layout-select').value = name;
+  return true;
+}
+
+// Exposed so nodes like voice-control can switch presets without owning
+// layout state themselves - same pattern as window.jarvisToast.
+window.jarvisSwitchPreset = switchPreset;
+
+document.getElementById('layout-select').addEventListener('change', (e) => switchPreset(e.target.value));
 
 document.getElementById('save-layout-btn').addEventListener('click', () => {
   const name = prompt('Save current arrangement on ALL screens as:');

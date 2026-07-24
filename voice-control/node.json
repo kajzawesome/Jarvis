@@ -1,0 +1,10 @@
+{
+  "id": "voice-control",
+  "label": "VOICE CONTROL",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 0,
+  "defaultSize": { "w": 4, "h": 6 }
+}

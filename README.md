@@ -38,6 +38,7 @@ Everything the HUD displays is a **node**: a self-contained folder that reports 
 | [google-calendar](google-calendar/README.md) | 🟢 active | Upcoming events — needs your own Google Cloud OAuth credentials |
 | [tech-news](tech-news/README.md) | 🟢 active | Top Hacker News stories, no key |
 | [weather-alerts](weather-alerts/README.md) | 🟢 active | Active NWS severe weather alerts (US-only), toasts on new ones |
+| [voice-control](voice-control/README.md) | 🟡 built, needs live mic test | Fixed voice commands (preset switch, MC/pomodoro/RGB control) — free, local, no API key |
 | [connectors](connectors/README.md) | 🟡 planned | Integration hub — Discord (scoped, not built — see BACKLOG.md), etc. |
 | [ai-agents](ai-agents/README.md) | 🔵 future | Status board for Claude Code / background agents |
 

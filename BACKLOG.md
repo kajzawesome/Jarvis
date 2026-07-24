@@ -70,6 +70,14 @@ User reported real bugs from the live running app (overhangs, scrollbars on indi
 
 - [x] User asked if layouts persist across reboot and doubted the save was working, since there was no feedback at all. **They do persist** — `SAVE ALL AS...` writes to `layouts.json` and sets `activePreset`, which every screen reads fresh on each launch (including via autostart), so this already worked, just silently. Added a `save-all-complete` IPC reply (main.js now tracks the initiating window's `webContents.id` through the save-all round trip and replies directly to it once the write lands) so a toast confirms the save actually happened.
 
+## Done (2026-07-24 — repo, config editability, voice control)
+
+- [x] Initialized as a real git repo (`git init` + first commit). `.gitignore` excludes `.env` (real secrets) and `node_modules/` — verified nothing sensitive was staged before committing (grepped for token/secret patterns across all tracked files first).
+- [x] Confirmed autostart genuinely works, not just "looks configured" — checked the actual Windows registry (`HKCU\...\Run`), found the real `electron.app.Electron` entry pointing at the correct Jarvis path. Combined with `layouts.json`'s `activePreset` being read fresh on every launch, config does persist across a real reboot, not just an app restart.
+- [x] Cleared out placeholder/example seed data (`productivity/data.json`'s "Example: Capstone milestone 1" / "Example Co") that read as confusing real entries — now starts empty since there's a real in-UI form to populate it.
+- [x] Added an **ADD APPLICATION** form + a status dropdown (applied/oa/phone_screen/onsite/offer/rejected) per row to `productivity` — applications were the one piece still hand-edit-only after the deadline form landed; now nothing in productivity requires touching `data.json` directly.
+- [x] `voice-control` node — fixed set of spoken commands (preset switching, MC server start/stop/status, pomodoro start/pause, network speed test, CPU usage query, RGB color), no API key/cost, uses the browser's built-in `SpeechRecognition`. **Verified the API object exists in this Electron build** (via a quick `executeJavaScript` probe, not guessed) but the actual mic/recognition quality is unverified — no way to test that from here. User explicitly chose this over full LLM-based voice control (bigger build, needs a paid API key) when asked to scope it.
+
 ## Scoped, not built (Discord)
 
 Two genuinely different builds under "Discord" — scoped both, neither started:

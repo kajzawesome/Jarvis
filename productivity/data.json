@@ -1,23 +1,5 @@
 {
-  "deadlines": [
-    {
-      "title": "Example: Capstone milestone 1",
-      "due": "2026-09-01",
-      "course": "CS-499"
-    }
-  ],
-  "applications": [
-    {
-      "company": "Example Co",
-      "role": "New Grad SWE",
-      "status": "applied",
-      "applied": "2026-07-01"
-    }
-  ],
-  "tasks": [
-    {
-      "text": "Set up real deadlines and applications in this file",
-      "status": "todo"
-    }
-  ]
+  "deadlines": [],
+  "applications": [],
+  "tasks": []
 }

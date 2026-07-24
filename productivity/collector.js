@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_PATH = path.join(__dirname, 'data.json');
+const APPLICATION_STATUSES = ['applied', 'oa', 'phone_screen', 'onsite', 'offer', 'rejected'];
 
 function readData() {
   return JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
@@ -19,6 +20,7 @@ async function getData() {
     .map((d) => ({ ...d, daysLeft: Math.ceil((new Date(d.due) - today) / 86400000) }))
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
+  const applications = raw.applications.map((a, index) => ({ ...a, index }));
   const openTasks = (raw.tasks || []).filter((t) => (t.status || (t.done ? 'done' : 'todo')) !== 'done');
 
   return {
@@ -26,7 +28,7 @@ async function getData() {
     state: 'ok',
     metrics: {
       deadlines,
-      applications: raw.applications,
+      applications,
       openTaskCount: openTasks.length,
     },
     lastUpdated: new Date().toISOString(),
@@ -40,4 +42,24 @@ function addDeadline({ title, due, course }) {
   writeData(data);
 }
 
-module.exports = { getData, addDeadline, DATA_PATH };
+function addApplication({ company, role, status }) {
+  if (!company || !role) return;
+  const data = readData();
+  data.applications.push({
+    company: company.trim(),
+    role: role.trim(),
+    status: APPLICATION_STATUSES.includes(status) ? status : 'applied',
+    applied: new Date().toISOString().slice(0, 10),
+  });
+  writeData(data);
+}
+
+function setApplicationStatus(index, status) {
+  if (!APPLICATION_STATUSES.includes(status)) return;
+  const data = readData();
+  if (!data.applications[index]) return;
+  data.applications[index].status = status;
+  writeData(data);
+}
+
+module.exports = { getData, addDeadline, addApplication, setApplicationStatus, APPLICATION_STATUSES, DATA_PATH };
