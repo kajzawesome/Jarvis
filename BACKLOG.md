@@ -78,6 +78,10 @@ User reported real bugs from the live running app (overhangs, scrollbars on indi
 - [x] Added an **ADD APPLICATION** form + a status dropdown (applied/oa/phone_screen/onsite/offer/rejected) per row to `productivity` — applications were the one piece still hand-edit-only after the deadline form landed; now nothing in productivity requires touching `data.json` directly.
 - [x] `voice-control` node — fixed set of spoken commands (preset switching, MC server start/stop/status, pomodoro start/pause, network speed test, CPU usage query, RGB color), no API key/cost, uses the browser's built-in `SpeechRecognition`. **Verified the API object exists in this Electron build** (via a quick `executeJavaScript` probe, not guessed) but the actual mic/recognition quality is unverified — no way to test that from here. User explicitly chose this over full LLM-based voice control (bigger build, needs a paid API key) when asked to scope it.
 
+## Done (2026-07-24, later — resize regression)
+
+- [x] Removed the JS-level "revert/reject an add or resize that doesn't fit" logic added earlier the same week. It was checking the *whole grid's* total height against the visible area, so on a dashboard with several tiles already placed, nearly any resize (even a small one) could tip the total over and get silently undone — user reported this as "a ton of resize issues." The underlying "never show a scrollbar" requirement is already fully satisfied by `overflow: hidden` at the CSS level (`.grid-wrap` and `.node-panel-body`) on its own — an oversized tile just gets visually clipped, nothing scrolls. Removed the JS layer entirely rather than trying to tune its strictness, since it was redundant with the CSS guarantee and only added friction.
+
 ## Scoped, not built (Discord)
 
 Two genuinely different builds under "Discord" — scoped both, neither started:

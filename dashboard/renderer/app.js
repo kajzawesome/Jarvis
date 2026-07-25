@@ -154,40 +154,24 @@ function mountNode(nodeId, el) {
   });
 }
 
-function fitsWithoutScroll() {
-  const wrap = document.querySelector('.grid-wrap');
-  return wrap.scrollHeight <= wrap.clientHeight + 1;
-}
-
-// Resizing an existing tile bigger (its own resize handle, not a fresh add)
-// doesn't go through addNodeToGrid at all - guard it here too, since the
-// grid-wrap being overflow:hidden means an oversized tile would otherwise
-// just get silently clipped instead of visibly reverting.
-let resizeStartSize = null;
-
-grid.on('resizestart', (event, el) => {
-  resizeStartSize = el.gridstackNode ? { w: el.gridstackNode.w, h: el.gridstackNode.h } : null;
-});
-
-grid.on('resizestop', (event, el) => {
-  if (resizeStartSize && !fitsWithoutScroll()) {
-    grid.update(el, resizeStartSize);
-    if (window.jarvisToast) window.jarvisToast('No room', "Resize reverted — wouldn't fit without scrolling");
-  }
-  resizeStartSize = null;
-});
+// "Never show a scrollbar" is enforced entirely at the CSS level
+// (.grid-wrap and .node-panel-body are both overflow:hidden) - earlier this
+// was ALSO enforced here in JS by reverting/rejecting any add or resize
+// that pushed the grid's total height past the visible area. That doubled
+// up badly: the JS check looks at the *whole* grid's height, so on a grid
+// with several tiles already placed, almost any resize (even one that only
+// grows a little) could tip the total over the edge and get silently
+// undone - which just reads as "resizing is broken." The CSS guarantee is
+// sufficient on its own (an oversized tile is clipped, never scrollable),
+// so the JS-level reject/revert was removed rather than tuned - it was
+// fighting normal use, not preventing scrollbars that wouldn't already be
+// blocked anyway.
 
 function addNodeToGrid(nodeId, opts = {}) {
   const node = NODES[nodeId];
   if (!node || placedIds.has(nodeId)) return false;
   const w = opts.w || node.defaultSize?.w || 4;
   const h = opts.h || node.defaultSize?.h || 4;
-  // Explicit x/y means this came from a saved layout/preset - trust it as
-  // intentional even if it doesn't fit today's screen. Only free-placement
-  // adds (dragged in from the palette, or a move from another screen) get
-  // rejected for not fitting, since gridstack auto-packs those and
-  // scrolling isn't wanted.
-  const isFreePlacement = opts.x == null && opts.y == null;
 
   const el = grid.addWidget({
     w,
@@ -198,12 +182,6 @@ function addNodeToGrid(nodeId, opts = {}) {
     content: '<div class="grid-stack-item-content"></div>',
   });
   el.setAttribute('gs-id', nodeId);
-
-  if (isFreePlacement && !fitsWithoutScroll()) {
-    grid.removeWidget(el);
-    if (window.jarvisToast) window.jarvisToast('No room', `${node.label} doesn't fit without scrolling`);
-    return false;
-  }
 
   el.dataset.headerHidden = opts.headerHidden ? 'true' : 'false';
   placedIds.add(nodeId);
