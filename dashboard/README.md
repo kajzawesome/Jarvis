@@ -9,7 +9,9 @@ npm install   # from the Jarvis root, not this folder — installs deps for ever
 npm start
 ```
 
-One borderless, fullscreen window opens per monitor (`fullscreen: true` — behaves like a fullscreen game/video, taskbar stays out of the way). Windows behave normally otherwise — minimize, alt-tab, drag them like any other window.
+One borderless, fullscreen window opens per monitor (`fullscreen: true` — behaves like a fullscreen game/video, taskbar stays out of the way). Windows behave normally otherwise — minimize, alt-tab, drag them like any other window. Works with however many monitors are connected (not hardcoded to 2), and adjusts live if you plug/unplug one while Jarvis is already running — `main.js` debounces the change and rebuilds every window from scratch, since a monitor added/removed can shift every other screen's left-to-right index.
+
+On every launch, `main.js` also runs `desktop-links/migrate-from-desktop.ps1` once to pull in anything new on the real Windows Desktop (merge-safe — only adds new targets, respects removals) and pushes a refresh to the desktop-links tile once it lands, so it stays in sync without a manual re-run.
 
 ## Controls
 
@@ -28,6 +30,10 @@ One borderless, fullscreen window opens per monitor (`fullscreen: true` — beha
 ### Toast notifications
 
 Call `window.jarvisToast(title, body)` from any widget's renderer-side code to pop a HUD alert. It shows locally immediately and sends `toast-broadcast` to `main.js`, which relays `show-toast` to every *other* open window so a notification triggered from one node (e.g. minecraft-server's join/leave watcher) is visible regardless of which screen you're looking at. Toasts auto-dismiss after ~6s (`.toast` animation in `style.css`).
+
+### Prompts — use `window.jarvisPrompt`, never `window.prompt`
+
+`window.prompt()`/`confirm()`/`alert()` are native OS dialogs — on Windows, these can render *behind* an exclusive-fullscreen window (which every Jarvis window is), making them invisible and unclickable. This looked exactly like "SAVE ALL AS... isn't doing anything." `window.jarvisPrompt(message, defaultValue?)` (defined in `app.js`, exposed globally like `jarvisToast`) is an in-DOM modal replacement — returns a Promise resolving to the entered string, `""` if confirmed blank, or `null` if cancelled (the blank/cancelled distinction matters — see `visa-status/widget.js`'s log-check flow, which treats a blank-but-confirmed stage as "keep the current one"). Every node's widget should use this instead of the native dialogs.
 
 ### Moving a tile between screens
 

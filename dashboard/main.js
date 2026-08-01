@@ -1,6 +1,7 @@
 const { app, BrowserWindow, screen, ipcMain, globalShortcut, dialog, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { execFile } = require('child_process');
 const { readLayouts, writeLayouts } = require('./layouts-store');
 
 let isQuitting = false;
@@ -75,6 +76,31 @@ function createWindows() {
   });
 }
 
+// Monitors plugged/unplugged/moved while Jarvis is already running. Screen
+// *index* is derived from left-to-right sort order (see createWindows), so
+// adding a monitor to the left of existing ones shifts every other index -
+// trying to patch individual windows in place risks silently mismatching
+// which physical screen shows which saved layout. Full teardown + rebuild
+// sidesteps that entirely at the cost of resetting any in-memory-only node
+// state (pomodoro's timer, clipboard history, etc. - anything not persisted
+// to disk) - an acceptable trade for an infrequent event, and everything
+// that matters (layouts, task lists, links) is disk-backed anyway.
+let recreateTimer = null;
+
+function recreateWindows() {
+  const old = windows.splice(0, windows.length);
+  old.forEach((w) => !w.isDestroyed() && w.destroy());
+  createWindows();
+}
+
+function scheduleRecreate() {
+  // Windows can fire multiple display-changed events in quick succession
+  // while it settles a new monitor configuration - debounce so this only
+  // rebuilds once, after things stop changing.
+  clearTimeout(recreateTimer);
+  recreateTimer = setTimeout(recreateWindows, 1000);
+}
+
 function toggleAllWindows() {
   const anyVisible = windows.some((w) => !w.isDestroyed() && w.isVisible());
   windows.forEach((w) => {
@@ -123,14 +149,37 @@ function createTray() {
   tray.on('double-click', toggleAllWindows);
 }
 
+// Keeps desktop-links in sync with the real Windows Desktop on every
+// launch, using the same merge-safe script as the manual re-sync (see
+// desktop-links/migrate-from-desktop.ps1) - safe to run unattended since it
+// only appends newly-discovered targets and respects excluded.json, never
+// overwriting links added/edited from the dashboard itself. Runs once here
+// (not per-window/per-collector-call) so two copies of the script can't
+// race on writing links.json when multiple screens are open.
+function syncDesktopLinks() {
+  const script = path.join(__dirname, '..', 'desktop-links', 'migrate-from-desktop.ps1');
+  execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], { timeout: 30000 }, (err) => {
+    if (err) {
+      console.error('desktop-links startup sync failed:', err.message);
+      return;
+    }
+    windows.forEach((w) => !w.isDestroyed() && w.webContents.send('force-refresh-node', 'desktop-links'));
+  });
+}
+
 app.whenReady().then(() => {
   const cfg = readConfig();
   applyAutostart(cfg.autostart !== false);
 
   createWindows();
   createTray();
+  syncDesktopLinks();
 
   globalShortcut.register('Control+Alt+J', toggleAllWindows);
+
+  screen.on('display-added', scheduleRecreate);
+  screen.on('display-removed', scheduleRecreate);
+  screen.on('display-metrics-changed', scheduleRecreate);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindows();

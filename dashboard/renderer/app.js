@@ -40,6 +40,7 @@ function itemsForThisScreen(layoutsData) {
 const NODES = discoverNodes();
 const timers = {};
 const placedIds = new Set();
+const refreshFns = {};
 const pendingMoves = {}; // nodeId -> { el } while awaiting move-node-result
 
 const grid = GridStack.init(
@@ -141,6 +142,7 @@ function mountNode(nodeId, el) {
   }
 
   refresh();
+  refreshFns[nodeId] = refresh;
   if (node.refreshMs > 0) {
     timers[nodeId] = setInterval(refresh, node.refreshMs);
   }
@@ -148,6 +150,7 @@ function mountNode(nodeId, el) {
   content.querySelector('.node-panel-close').addEventListener('click', () => {
     clearInterval(timers[nodeId]);
     delete timers[nodeId];
+    delete refreshFns[nodeId];
     grid.removeWidget(el);
     placedIds.delete(nodeId);
     renderPalette();
@@ -212,6 +215,7 @@ function renderPalette() {
 function applyLayout(items) {
   Object.values(timers).forEach(clearInterval);
   Object.keys(timers).forEach((k) => delete timers[k]);
+  Object.keys(refreshFns).forEach((k) => delete refreshFns[k]);
   grid.removeAll();
   placedIds.clear();
   items.forEach((it) => addNodeToGrid(it.id, it));
@@ -271,8 +275,8 @@ window.jarvisSwitchPreset = switchPreset;
 
 document.getElementById('layout-select').addEventListener('change', (e) => switchPreset(e.target.value));
 
-document.getElementById('save-layout-btn').addEventListener('click', () => {
-  const name = prompt('Save current arrangement on ALL screens as:');
+document.getElementById('save-layout-btn').addEventListener('click', async () => {
+  const name = await window.jarvisPrompt('Save current arrangement on ALL screens as:');
   if (!name) return;
   ipcRenderer.send('save-all-request', name);
 });
@@ -334,6 +338,7 @@ ipcRenderer.on('move-node-result', (event, { nodeId, success }) => {
   if (success) {
     clearInterval(timers[nodeId]);
     delete timers[nodeId];
+    delete refreshFns[nodeId];
     grid.removeWidget(el);
     placedIds.delete(nodeId);
     renderPalette();
@@ -371,6 +376,62 @@ window.jarvisToast = (title, body) => {
 };
 
 ipcRenderer.on('show-toast', (event, { title, body }) => showToast(title, body));
+
+// main.js re-syncs desktop-links against the real Windows Desktop on every
+// launch (see syncDesktopLinks in main.js); once that write lands, force
+// this tile to re-pull links.json rather than waiting on its refreshMs: 0
+// (manual-only) interval, which would otherwise leave the newly-synced
+// links invisible until an unrelated add/remove triggered a re-render.
+ipcRenderer.on('force-refresh-node', (event, nodeId) => {
+  if (refreshFns[nodeId]) refreshFns[nodeId]();
+});
+
+// ---- in-page prompt, replacing window.prompt() ----
+// Native OS dialogs (window.prompt/confirm) can end up rendered behind an
+// exclusive-fullscreen window on Windows - which is exactly what this app's
+// windows are. A blocked/invisible prompt looks identical to "nothing
+// happened," which is exactly what SAVE ALL AS... looked like. This is an
+// in-DOM replacement so there's no native dialog to get hidden.
+function jarvisPrompt(message, defaultValue = '') {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'jarvis-modal-overlay';
+    overlay.innerHTML = `
+      <div class="jarvis-modal">
+        <div class="jarvis-modal-message">${message}</div>
+        <input type="text" class="app-picker-search jarvis-modal-input" />
+        <div class="btn-row">
+          <button class="hud-btn" data-action="ok">OK</button>
+          <button class="hud-btn" data-action="cancel">CANCEL</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('.jarvis-modal-input');
+    input.value = defaultValue;
+    input.focus();
+    input.select();
+
+    function finish(value) {
+      overlay.remove();
+      resolve(value);
+    }
+
+    // OK resolves with the raw value (even "") so callers can tell "typed
+    // nothing, but confirmed" apart from "cancelled" (visa-status's log
+    // check relies on this - blank+confirmed means "keep current stage").
+    // Only Cancel/Escape resolve null.
+    overlay.querySelector('[data-action="ok"]').addEventListener('click', () => finish(input.value.trim()));
+    overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => finish(null));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') finish(input.value.trim());
+      if (e.key === 'Escape') finish(null);
+    });
+  });
+}
+
+window.jarvisPrompt = jarvisPrompt;
 
 function tickClock() {
   document.getElementById('clock').textContent = new Date().toLocaleString([], { hour12: false });

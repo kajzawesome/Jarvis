@@ -24,11 +24,13 @@ Prints the same full detected-app list the "ADD APP" picker uses (JSON) — usef
 
 ## Migrating from your real Desktop/taskbar (bulk import)
 
+Runs **automatically on every Jarvis launch** now (`main.js` calls it once at startup, not per-window, so it can't race with itself across multiple screens) — the tile refreshes itself once the sync lands, no manual step needed anymore. Still runnable by hand too:
+
 ```
 powershell -ExecutionPolicy Bypass -File desktop-links\migrate-from-desktop.ps1
 ```
 
-Scans your Desktop (+ Public Desktop) for shortcuts/folders, plus a *curated* set of taskbar-pinned apps (`$taskbarNamesToInclude` in the script — unlike the "ADD APP" picker, which shows everything, this bulk import only pulls in taskbar apps you've explicitly named, to avoid dumping every pinned icon in one go). Merges into the existing `links.json` — safe to re-run any time, won't duplicate or wipe out manual adds/removals (see `excluded.json` above).
+Scans your Desktop (+ Public Desktop) for shortcuts/folders, plus a *curated* set of taskbar-pinned apps (`$taskbarNamesToInclude` in the script — unlike the "ADD APP" picker, which shows everything, this bulk import only pulls in taskbar apps you've explicitly named, to avoid dumping every pinned icon in one go). Merges into the existing `links.json` — safe to re-run any time (including automatically on every launch), won't duplicate or wipe out manual adds/removals (see `excluded.json` above).
 
 Shortcut arguments are captured too (e.g. the "MC Server" shortcut, which launches PowerShell with a `-File` argument) — these get an `args` field and are launched via `spawn` instead of `shell.openPath`, since `openPath` can't pass arguments. The "ADD APP" picker captures these too.
 
@@ -39,3 +41,7 @@ Shortcut arguments are captured too (e.g. the "MC Server" shortcut, which launch
 ```
 
 `type` is `app`, `folder`, or `url`. `icon` is relative to this folder, or `null`/empty for the letter-circle fallback (used for folders, which don't have a meaningful extractable icon). Hand-edit `links.json` directly for one-off tweaks.
+
+## Tile sizing
+
+Icon size and label text scale with the tile's own size (same container-query pattern used everywhere else in the HUD — bigger tile, bigger icons). Long labels wrap to 2 lines and clip rather than spilling past the tile's border, so a name always fits inside its box regardless of how long it is or how small the tile is.

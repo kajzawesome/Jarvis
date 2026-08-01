@@ -30,9 +30,9 @@ function render(container, data) {
   container.querySelector('[data-action="open"]').addEventListener('click', () => collector.openCeac());
 
   container.querySelector('[data-action="log"]').addEventListener('click', async () => {
-    const stage = prompt('Current stage (leave blank to keep "' + m.currentStage + '"):', m.currentStage);
+    const stage = await window.jarvisPrompt('Current stage (leave blank to keep "' + m.currentStage + '"):', m.currentStage);
     if (stage === null) return;
-    const note = prompt('Any note? (optional)') || '';
+    const note = (await window.jarvisPrompt('Any note? (optional)')) || '';
     collector.logCheck({ stage, note });
     const fresh = await collector.getStatus();
     render(container, fresh);

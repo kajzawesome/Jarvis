@@ -133,7 +133,7 @@ function render(container, data) {
   container.querySelector('[data-add="file"]').addEventListener('click', async () => {
     const picked = await ipcRenderer.invoke('pick-path');
     if (!picked) return;
-    const label = prompt('Label for this shortcut:', path.basename(picked));
+    const label = await window.jarvisPrompt('Label for this shortcut:', path.basename(picked));
     if (!label) return;
     const isDir = fs.statSync(picked).isDirectory();
     await collector.addLink({ label, type: isDir ? 'folder' : 'app', target: picked });
@@ -141,9 +141,9 @@ function render(container, data) {
   });
 
   container.querySelector('[data-add="url"]').addEventListener('click', async () => {
-    const url = prompt('URL (include https://):');
+    const url = await window.jarvisPrompt('URL (include https://):');
     if (!url) return;
-    const label = prompt('Label:', url.replace(/^https?:\/\//, '').split('/')[0]);
+    const label = await window.jarvisPrompt('Label:', url.replace(/^https?:\/\//, '').split('/')[0]);
     if (!label) return;
     await collector.addLink({ label, type: 'url', target: url });
     await refreshAndRerender(container);

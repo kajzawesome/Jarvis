@@ -17,3 +17,5 @@ Note the toggle actions (`toggleStreaming`/`toggleRecording`) weren't exercised 
    STREAMLABS_API_TOKEN=<your token>
    ```
 4. Streamlabs Desktop needs to actually be running for this to connect — if it's not, the tile will show a connection error rather than "not configured" (that state specifically means the token itself is missing).
+
+**Now running automatically**: `dashboard/node-dependencies-autostart.ps1` created a Windows Startup-folder shortcut for Streamlabs Desktop, so it should already be up by the time Jarvis launches after a reboot — Remote Control itself doesn't need a launch flag, it's a setting saved inside Streamlabs that persists once enabled.

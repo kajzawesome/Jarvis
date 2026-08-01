@@ -1,0 +1,10 @@
+{
+  "id": "dev-workspace",
+  "label": "DEV WORKSPACE",
+  "collector": "./collector.js",
+  "collectorFn": "getStatus",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 15000,
+  "defaultSize": { "w": 5, "h": 6 }
+}
