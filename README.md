@@ -101,7 +101,7 @@ Built with Electron ([dashboard/](dashboard/)) — one borderless window per mon
 - **Toast notifications** — any node can call `window.jarvisToast(title, body)` to pop a HUD alert on every open screen. Used by minecraft-server's join/leave watcher and pomodoro's session-end alert.
 - **Autostart** — toggled via the `AUTOSTART` button (or the tray menu); persists in `dashboard/config.json`.
 
-Run it: `npm install` then `npm start` from the Jarvis root (see [dashboard/README.md](dashboard/README.md) for details).
+Run it: `npm install` then `npm start` from the Jarvis root, or run `dashboard\create-desktop-shortcut.ps1` once to get a double-clickable "Jarvis" shortcut on your Desktop (no terminal needed after that) — see [dashboard/README.md](dashboard/README.md) for details.
 
 ## Open questions for later
 

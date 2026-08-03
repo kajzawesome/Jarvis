@@ -9,6 +9,8 @@ npm install   # from the Jarvis root, not this folder — installs deps for ever
 npm start
 ```
 
+Or, for a double-clickable launcher instead of a terminal: run `dashboard\create-desktop-shortcut.ps1` once (`powershell -ExecutionPolicy Bypass -File dashboard\create-desktop-shortcut.ps1`) — creates a "Jarvis" shortcut on your Desktop pointed at the same `electron.exe <Jarvis root>` command autostart already uses, with the tray icon as its shortcut icon (converted from `assets/tray-icon.png` to a `.ico`, since Windows shortcuts need one). Re-run any time to recreate it; pin it to Start/taskbar like any other shortcut if you want it somewhere more permanent.
+
 One borderless, fullscreen window opens per monitor (`fullscreen: true` — behaves like a fullscreen game/video, taskbar stays out of the way). Windows behave normally otherwise — minimize, alt-tab, drag them like any other window. Works with however many monitors are connected (not hardcoded to 2), and adjusts live if you plug/unplug one while Jarvis is already running — `main.js` debounces the change and rebuilds every window from scratch, since a monitor added/removed can shift every other screen's left-to-right index.
 
 On every launch, `main.js` also runs `desktop-links/migrate-from-desktop.ps1` once to pull in anything new on the real Windows Desktop (merge-safe — only adds new targets, respects removals) and pushes a refresh to the desktop-links tile once it lands, so it stays in sync without a manual re-run.
