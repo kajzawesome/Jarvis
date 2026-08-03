@@ -26,6 +26,13 @@ body {
   font-family: var(--font);
   overflow: hidden;
   user-select: none;
+  /* Without this, Chromium renders native form controls (date/time picker
+     icons, checkboxes) in their light-theme variant by default - a dark
+     near-black icon on this app's near-black input backgrounds, which is
+     effectively invisible. This is almost certainly why the add-event
+     modal's date/time pickers looked like "missing sections" - the picker
+     toggle icon was there, just impossible to see or click accurately. */
+  color-scheme: dark;
 }
 
 body::before {
@@ -120,6 +127,16 @@ body::before {
   .hud-bg-glow {
     animation: none;
   }
+}
+
+/* Same effect as the OS-level prefers-reduced-motion above, but under
+   explicit in-app control (REDUCE MOTION button) rather than tied to a
+   system accessibility setting a laptop owner may not want to change
+   system-wide just to get one app to stop animating. */
+body.reduce-motion .hud-bg-grid,
+body.reduce-motion .hud-bg-scan,
+body.reduce-motion .hud-bg-glow {
+  animation: none;
 }
 
 .app-shell {
@@ -607,6 +624,12 @@ body:not(.edit-mode) .grid-stack-item[data-header-hidden='true'] .node-panel-hea
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  cursor: pointer;
+}
+
+.cal-week-day:hover {
+  border-color: var(--green);
+  background: var(--green-faint);
 }
 
 .cal-week-day.today {
@@ -686,6 +709,12 @@ body:not(.edit-mode) .grid-stack-item[data-header-hidden='true'] .node-panel-hea
   align-items: flex-start;
   min-width: 0;
   min-height: 0;
+  cursor: pointer;
+}
+
+.cal-month-day:hover {
+  border-color: var(--green);
+  background: var(--green-faint);
 }
 
 .cal-month-day.today {

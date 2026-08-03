@@ -4,6 +4,16 @@ A personal command center, in the spirit of Tony Stark's J.A.R.V.I.S. — a blac
 
 Everything the HUD displays is a **node**: a self-contained folder that reports data and renders its own tile. The [dashboard](dashboard/) app auto-discovers every node folder at startup — nothing to register by hand. Planned work lives in [BACKLOG.md](BACKLOG.md).
 
+## Getting started (new machine / new person)
+
+1. **Install:** `npm install` from the Jarvis root (installs every node's dependencies too, not just the dashboard's).
+2. **Credentials (all optional):** copy [.env.example](.env.example) to `.env` and fill in whichever integrations you actually want (Twitch, router, GitHub, Spotify, Streamlabs, Google Calendar). Skip anything you don't use — every node that needs a credential shows a clear "not configured" state instead of erroring, so a bare `.env` (or none at all) still gives you a fully working dashboard, just with those specific tiles inactive until you fill them in. Each has its own step-by-step README (e.g. [twitch/README.md](twitch/README.md), [google-calendar/README.md](google-calendar/README.md)) for getting API keys.
+3. **Run it:** `npm start` from the Jarvis root, or run `dashboard\create-desktop-shortcut.ps1` once for a double-clickable "Jarvis" shortcut on the Desktop (no terminal needed after that — see [dashboard/README.md](dashboard/README.md)).
+4. **Starter layout:** [dashboard/layouts.json](dashboard/layouts.json) ships with a real, already-arranged "Default" preset (not a blank grid) — it'll just show "not configured"/empty states for anything you haven't set up credentials for yet. Drag things around freely (`EDIT LAYOUT` button) and use `SAVE ALL AS...`/`UPDATE`/`DELETE PRESET` in the top bar to make your own.
+5. **On a laptop or lower-power GPU:** click `REDUCE MOTION` in the top bar to turn off the animated ambient background (the one genuinely continuous/always-running visual cost in the whole app) — see "Performance" below for more.
+6. **Want to change the color scheme?** See "Customizing the look" below — it's a handful of CSS variables, not a rewrite.
+7. **Want to add your own node** (a widget for something this doesn't cover yet)? See "Adding a new node" below.
+
 ## Status legend
 
 - 🟢 **active** — built and wired into the dashboard
@@ -100,8 +110,36 @@ Built with Electron ([dashboard/](dashboard/)) — one borderless window per mon
 - **Tray icon** — closing a window just hides it; the tray icon (right-click: show/hide all, autostart toggle, quit) is the only real way to exit, so background timers/watchers (like MC log tailing) keep running.
 - **Toast notifications** — any node can call `window.jarvisToast(title, body)` to pop a HUD alert on every open screen. Used by minecraft-server's join/leave watcher and pomodoro's session-end alert.
 - **Autostart** — toggled via the `AUTOSTART` button (or the tray menu); persists in `dashboard/config.json`.
+- **Reduce motion** — toggled via the `REDUCE MOTION` button; turns off the animated ambient background (drifting grid, scan sweep, pulse glow). One global setting shared by every open screen, persists in `dashboard/config.json`. See "Performance" below.
 
-Run it: `npm install` then `npm start` from the Jarvis root, or run `dashboard\create-desktop-shortcut.ps1` once to get a double-clickable "Jarvis" shortcut on your Desktop (no terminal needed after that) — see [dashboard/README.md](dashboard/README.md) for details.
+## Performance
+
+The ambient background's three CSS animations are the one genuinely continuous, always-running visual cost in the app — cheap on a desktop GPU, but worth turning off on a laptop or integrated GPU (`REDUCE MOTION` in the top bar; same effect as the OS-level "reduce motion" accessibility setting, just app-scoped so you don't have to change that system-wide). Beyond that:
+
+- **Hiding/minimizing a screen actually pauses it** — every node's refresh timer (including the ones that shell out to a real process: PowerShell/WMI queries, `nvidia-smi`, `docker inspect`, etc.) stops the moment a window is hidden or minimized (`document.visibilityState`), and resumes with one immediate catch-up refresh once it's visible again. If Jarvis is competing with something CPU-heavy (a game, a build), just hide it — the tray icon (usually under Windows' taskbar "hidden icons" chevron) brings it back.
+- **`pc-stats`** caches its two heaviest calls (`nvidia-smi`, a LibreHardwareMonitor WMI query) for 20s independent of its own refresh cadence, since both spawn a whole separate process and don't need to be as fresh as CPU%/RAM%.
+- Every node's `refreshMs` (in its `node.json`) is fair game to raise if something feels too chatty for a particular machine — no code changes needed, just a bigger number.
+
+## Customizing the look
+
+The whole black/green/white theme is a handful of CSS custom properties at the top of [dashboard/renderer/style.css](dashboard/renderer/style.css):
+
+```css
+:root {
+  --bg: #020403;          /* page background */
+  --bg-panel: rgba(4, 14, 9, 0.82);   /* tile background (translucent) */
+  --bg-panel-solid: #05130b;          /* tile background (opaque - palette, modals) */
+  --green: #00ff9c;        /* primary accent - text, borders, glow */
+  --green-dim: #0a5c38;    /* dimmer borders/dividers */
+  --green-faint: #063321;  /* hover backgrounds, chips */
+  --white: #eafff2;        /* body text */
+  --red: #ff3b3b;          /* errors, offline/urgent states, delete actions */
+  --glow: 0 0 6px rgba(0, 255, 156, 0.55), 0 0 18px rgba(0, 255, 156, 0.15); /* the glow effect on focus/hover/active */
+  --font: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+}
+```
+
+Every shared HUD class (`.hud-btn`, `.row`, `.status-pill`, tile borders, the ambient background, etc.) references these — change the values here and it recolors the entire app, not just one widget. Want a blue HUD instead of green? Swap `--green`/`--green-dim`/`--green-faint` and adjust `--glow`'s color to match; everything else (layout, animations, container-query text scaling) is untouched. A node's own `widget.js` should stick to the shared classes rather than hardcoding colors, precisely so this stays a one-file change — see "Adding a new node" above.
 
 ## Open questions for later
 

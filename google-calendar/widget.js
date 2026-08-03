@@ -73,6 +73,15 @@ function renderList(events) {
   `;
 }
 
+// When a narrow view (day/week) has nothing in it but events DO exist
+// further out in the already-fetched 42-day window, say so - a bare
+// "nothing scheduled" reads as broken when List clearly has events, when
+// really it's just correctly showing that none of them land in this
+// particular day/week.
+function laterElsewhereHint(events) {
+  return events.length ? `<div class="foot-line">nothing here — ${events.length} upcoming further out, check LIST or MONTH</div>` : '<div class="foot-line">nothing upcoming</div>';
+}
+
 function renderDay(events) {
   const day = new Date();
   day.setDate(day.getDate() + dayOffset);
@@ -84,7 +93,7 @@ function renderDay(events) {
       <span class="cal-day-label">${day.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}${dayOffset === 0 ? ' · TODAY' : ''}</span>
       <button class="hud-btn cal-day-nav-btn" data-day-nav="1" title="next day">›</button>
     </div>
-    <div class="fit-zone">
+    <div class="fit-zone" data-add-date="${dateKey(day)}">
       ${
         dayEvents
           .map(
@@ -93,7 +102,7 @@ function renderDay(events) {
               <span class="row-value">${fmtTime(e)}</span>
             </div>`
           )
-          .join('') || '<div class="foot-line">nothing scheduled</div>'
+          .join('') || laterElsewhereHint(events)
       }
     </div>
   `;
@@ -111,13 +120,15 @@ function renderWeek(events) {
     return { date: d, key: dateKey(d), isToday: dateKey(d) === dateKey(today) };
   });
 
+  const anyThisWeek = days.some((d) => (byDay[d.key] || []).length);
+
   return `
     <div class="cal-week-grid">
       ${days
         .map((day) => {
           const dayEvents = byDay[day.key] || [];
           return `
-            <div class="cal-week-day${day.isToday ? ' today' : ''}">
+            <div class="cal-week-day${day.isToday ? ' today' : ''}" data-add-date="${day.key}" title="click to add an event on ${day.key}">
               <div class="cal-week-day-head">
                 <span class="cal-week-day-name">${day.date.toLocaleDateString([], { weekday: 'short' })}</span>
                 <span class="cal-week-day-num">${day.date.getDate()}</span>
@@ -132,6 +143,7 @@ function renderWeek(events) {
         })
         .join('')}
     </div>
+    ${anyThisWeek ? '' : laterElsewhereHint(events)}
   `;
 }
 
@@ -176,7 +188,7 @@ function renderMonth(events) {
           if (!cell.inMonth) classes.push('outside');
           const titles = dayEvents.map((e) => e.title).join(', ');
           return `
-            <div class="${classes.join(' ')}" ${titles ? `title="${titles}"` : ''}>
+            <div class="${classes.join(' ')}" data-add-date="${key}" title="${titles ? titles + ' — ' : ''}click to add an event on ${key}">
               <span class="cal-month-day-num">${cell.date.getDate()}</span>
               ${dayEvents.length ? `<span class="cal-month-day-dot">${dayEvents.length}</span>` : ''}
             </div>
@@ -194,11 +206,16 @@ function toDateInputValue(d) {
 // In-DOM modal, not window.prompt() - native dialogs are avoided project-
 // wide (see dashboard/README.md's "Prompts" section), and this needs
 // multiple fields anyway, which window.jarvisPrompt (single text field)
-// can't do. Defaults the date to whatever day is currently in view (DAY
-// view's dayOffset if that's the active view, otherwise today).
-function openAddEventModal(container) {
-  const defaultDate = new Date();
-  defaultDate.setDate(defaultDate.getDate() + (getView() === 'day' ? dayOffset : 0));
+// can't do. Defaults the date to an explicit presetDateStr ("YYYY-MM-DD",
+// passed when opened by clicking a specific day/cell), falling back to
+// whatever day is currently in view (DAY view's dayOffset), then today.
+function openAddEventModal(container, presetDateStr) {
+  let dateValue = presetDateStr;
+  if (!dateValue) {
+    const d = new Date();
+    d.setDate(d.getDate() + (getView() === 'day' ? dayOffset : 0));
+    dateValue = toDateInputValue(d);
+  }
 
   const overlay = document.createElement('div');
   overlay.className = 'jarvis-modal-overlay';
@@ -207,7 +224,7 @@ function openAddEventModal(container) {
       <div class="jarvis-modal-message">ADD EVENT</div>
       <input type="text" class="app-picker-search jarvis-modal-input" data-field="title" placeholder="Title" />
       <div class="cal-add-modal-row">
-        <input type="date" class="app-picker-search jarvis-modal-input" data-field="date" value="${toDateInputValue(defaultDate)}" />
+        <input type="date" class="app-picker-search jarvis-modal-input" data-field="date" value="${dateValue}" />
         <input type="time" class="app-picker-search jarvis-modal-input" data-field="time" value="12:00" />
       </div>
       <label class="cal-add-modal-allday">
@@ -240,7 +257,22 @@ function openAddEventModal(container) {
     if (e.target === overlay) close();
   });
 
-  overlay.querySelector('[data-action="add"]').addEventListener('click', async () => {
+  const addBtn = overlay.querySelector('[data-action="add"]');
+
+  // "insufficient authentication scopes" is exactly what happens for
+  // anyone who connected before write access existed (this node used to
+  // request calendar.readonly, now requests calendar.events) - their
+  // stored token is still read-only. There's no other UI path to re-auth
+  // once already "connected" (the CONNECT button only shows up in the
+  // not_connected state), so this is the one place that gap is fixable -
+  // offer to reconnect right where the error actually happened, and retry
+  // the same add automatically once reconnected instead of making the user
+  // re-enter everything and click ADD again.
+  function isScopeError(message) {
+    return /insufficient|scope/i.test(message);
+  }
+
+  async function trySubmit() {
     const title = titleInput.value.trim();
     const date = overlay.querySelector('[data-field="date"]').value;
     const allDay = allDayInput.checked;
@@ -249,7 +281,6 @@ function openAddEventModal(container) {
       errorEl.textContent = 'title and date are required';
       return;
     }
-    const addBtn = overlay.querySelector('[data-action="add"]');
     addBtn.disabled = true;
     addBtn.textContent = 'ADDING...';
     try {
@@ -258,12 +289,31 @@ function openAddEventModal(container) {
       const fresh = await collector.getEvents();
       render(container, fresh);
       if (window.jarvisToast) window.jarvisToast('Event added', `"${title}" added to your calendar.`);
+      return;
     } catch (err) {
-      errorEl.textContent = err.message;
+      if (isScopeError(err.message)) {
+        errorEl.innerHTML = `Your connection is missing permission to add events. <button class="hud-btn" data-action="reconnect">RECONNECT</button>`;
+        errorEl.querySelector('[data-action="reconnect"]').addEventListener('click', async () => {
+          const reconnectBtn = errorEl.querySelector('[data-action="reconnect"]');
+          reconnectBtn.disabled = true;
+          reconnectBtn.textContent = 'CHECK YOUR BROWSER...';
+          try {
+            await collector.connectAccount();
+            errorEl.textContent = '';
+            await trySubmit(); // same title/date/time are still in the form - just retry
+          } catch (reErr) {
+            errorEl.textContent = 'reconnect failed: ' + reErr.message;
+          }
+        });
+      } else {
+        errorEl.textContent = err.message;
+      }
       addBtn.disabled = false;
       addBtn.textContent = 'ADD';
     }
-  });
+  }
+
+  addBtn.addEventListener('click', trySubmit);
 }
 
 function render(container, data) {
@@ -327,6 +377,18 @@ function render(container, data) {
   });
 
   container.querySelector('[data-action="add-event"]').addEventListener('click', () => openAddEventModal(container));
+
+  // Click a specific day cell/column (month grid, week columns, or the day
+  // view's own body) to add an event pre-filled to that date - but not when
+  // the click landed on an existing event (row/chip), which should stay
+  // inert for now (no edit support yet, so don't make clicking one look
+  // like it should do something).
+  container.querySelectorAll('[data-add-date]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.row') || e.target.closest('.cal-event-chip')) return;
+      openAddEventModal(container, el.dataset.addDate);
+    });
+  });
 
   const prevDayBtn = container.querySelector('[data-day-nav="-1"]');
   if (prevDayBtn) {

@@ -322,3 +322,20 @@ ipcMain.handle('toggle-autostart', () => {
   applyAutostart(next);
   return next;
 });
+
+// Off by default (unlike autostart) - existing installs shouldn't have
+// their ambient background silently disabled. A single global setting
+// (not per-screen) so toggling it anywhere applies everywhere at once -
+// broadcasts to every window the moment it changes, same as layouts-changed.
+ipcMain.handle('get-reduce-motion', () => {
+  return readConfig().reduceMotion === true;
+});
+
+ipcMain.handle('toggle-reduce-motion', () => {
+  const cfg = readConfig();
+  const next = !(cfg.reduceMotion === true);
+  cfg.reduceMotion = next;
+  writeConfig(cfg);
+  windows.forEach((w) => !w.isDestroyed() && w.webContents.send('reduce-motion-changed', next));
+  return next;
+});

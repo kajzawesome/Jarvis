@@ -428,6 +428,22 @@ autostartBtn.addEventListener('click', async () => {
   autostartBtn.classList.toggle('active', on);
 });
 
+// Off by default - the ambient background (3 always-running CSS animations)
+// is cheap on a desktop GPU but adds up on a laptop/lower-power one running
+// on battery. A single global setting, not per-screen - toggling it on any
+// screen applies to every open window at once via main.js's broadcast.
+const reduceMotionBtn = document.getElementById('reduce-motion-toggle');
+function applyReduceMotion(on) {
+  document.body.classList.toggle('reduce-motion', on);
+  reduceMotionBtn.classList.toggle('active', on);
+}
+ipcRenderer.invoke('get-reduce-motion').then(applyReduceMotion);
+reduceMotionBtn.addEventListener('click', async () => {
+  const on = await ipcRenderer.invoke('toggle-reduce-motion');
+  applyReduceMotion(on);
+});
+ipcRenderer.on('reduce-motion-changed', (event, on) => applyReduceMotion(on));
+
 function switchPreset(name) {
   if (!layoutsData.presets[name]) return false;
   layoutsData.activePreset = name;
