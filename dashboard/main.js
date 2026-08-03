@@ -339,3 +339,23 @@ ipcMain.handle('toggle-reduce-motion', () => {
   windows.forEach((w) => !w.isDestroyed() && w.webContents.send('reduce-motion-changed', next));
   return next;
 });
+
+// The theme PRESET NAMES are validated here (not just trusted from the
+// renderer) since this writes straight to config.json - the actual color
+// values themselves live in renderer/app.js's THEMES table, main.js has no
+// reason to know what a "blue" theme actually looks like.
+const THEME_NAMES = ['green', 'blue', 'amber', 'purple'];
+
+ipcMain.handle('get-theme', () => {
+  const t = readConfig().theme;
+  return THEME_NAMES.includes(t) ? t : 'green';
+});
+
+ipcMain.handle('set-theme', (event, name) => {
+  if (!THEME_NAMES.includes(name)) return readConfig().theme || 'green';
+  const cfg = readConfig();
+  cfg.theme = name;
+  writeConfig(cfg);
+  windows.forEach((w) => !w.isDestroyed() && w.webContents.send('theme-changed', name));
+  return name;
+});

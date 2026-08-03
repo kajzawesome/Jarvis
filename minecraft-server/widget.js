@@ -41,6 +41,11 @@ function render(container, data) {
     return;
   }
 
+  if (data.state === 'not_configured') {
+    container.innerHTML = `<div class="node-empty">not configured - set MC_HOME_STACK_DIR in .env (see minecraft-server/README.md)</div>`;
+    return;
+  }
+
   if (data.state === 'daemon_down') {
     collector.stopWatchingLogs();
     container.innerHTML = `

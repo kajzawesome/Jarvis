@@ -22,7 +22,10 @@ $shell = New-Object -ComObject WScript.Shell
 $APPS = @(
   @{
     Name   = 'OpenRGB (Jarvis)'
-    Target = 'C:\Users\USERNAME\Downloads\OpenRGB_0.9_Windows_64_b5f46e3\OpenRGB Windows 64-bit\OpenRGB.exe'
+    # EDIT THIS to your own OpenRGB.exe location (same path you set as
+    # OPENRGB_EXE_PATH in .env) - portable/versioned downloads like this one
+    # land in a different folder on every machine.
+    Target = 'C:\Users\you\Downloads\OpenRGB_0.9_Windows_64\OpenRGB Windows 64-bit\OpenRGB.exe'
     # --server starts the SDK server rgb-control connects to; --startminimized
     # keeps it out of the way. If rgb-control still shows "not running" after
     # a reboot, open OpenRGB manually once and check the SDK Server tab has

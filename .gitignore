@@ -3,3 +3,12 @@
 
 # Regenerable
 node_modules/
+
+# Real personal data (your actual desktop shortcuts/app paths/Windows
+# username), not something that belongs in a shared/public repo - the app
+# recreates this on first use ("+ ADD APP" in the tile, or run
+# migrate-from-desktop.ps1) and gracefully defaults to empty if it's
+# missing, same as .env being absent just means "not configured" elsewhere.
+desktop-links/links.json
+desktop-links/excluded.json
+desktop-links/icons/*.png

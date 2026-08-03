@@ -1,0 +1,10 @@
+{
+  "id": "example-node",
+  "label": "EXAMPLE",
+  "collector": "./collector.js",
+  "collectorFn": "getData",
+  "collectorArgs": [],
+  "widget": "./widget.js",
+  "refreshMs": 5000,
+  "defaultSize": { "w": 3, "h": 3 }
+}

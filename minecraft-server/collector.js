@@ -6,11 +6,34 @@ const fs = require('fs');
 const path = require('path');
 const execFileP = promisify(execFile);
 
-// Hardcoded to this machine's actual home-stack location. Update these two
-// paths if the project ever moves.
-const HOME_STACK_DIR = 'C:\\Users\\USERNAME\\Desktop\\new server\\home-stack';
-const ENV_PATH = path.join(HOME_STACK_DIR, '.env');
-const PAPER_DIR = path.join(HOME_STACK_DIR, 'paper');
+// This node was written for one specific self-hosted setup: a Docker
+// Compose stack with a Paper container + a tunnel-client that dials out to
+// a relay (see the README) - not a generic "any Minecraft server" node.
+// Wasn't portable at all until this pointed at a real absolute path baked
+// into the code - now it's read from Jarvis's own root .env (same pattern
+// as every other node's credentials), and gracefully shows "not
+// configured" instead of erroring when it's unset. Set MC_HOME_STACK_DIR
+// in .env to the folder containing your stack's docker-compose.yml, or
+// leave it unset if this doesn't match your setup at all.
+const JARVIS_ENV_PATH = path.join(__dirname, '..', '.env');
+
+function readJarvisEnv() {
+  const env = {};
+  try {
+    const content = fs.readFileSync(JARVIS_ENV_PATH, 'utf-8');
+    content.split(/\r?\n/).forEach((line) => {
+      const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+      if (m) env[m[1]] = m[2].trim();
+    });
+  } catch {
+    // no .env yet - treated as not configured below
+  }
+  return env;
+}
+
+function getHomeStackDir() {
+  return readJarvisEnv().MC_HOME_STACK_DIR || null;
+}
 
 const CONTAINERS = [
   { name: 'Paper', container: 'mc-paper' },
@@ -44,9 +67,12 @@ async function containerStatus(containerName) {
   }
 }
 
-function readRelayAddr() {
+// RELAY_ADDR lives in the home-stack's OWN .env (a different file from
+// Jarvis's root .env) - only that one line is read, no other secrets in
+// that file are touched.
+function readRelayAddr(homeStackDir) {
   try {
-    const content = fs.readFileSync(ENV_PATH, 'utf-8');
+    const content = fs.readFileSync(path.join(homeStackDir, '.env'), 'utf-8');
     const match = content.match(/^RELAY_ADDR=(.+)$/m);
     return match ? match[1].trim() : null;
   } catch {
@@ -77,6 +103,16 @@ function checkRelay(addr) {
 }
 
 async function getStatus() {
+  const homeStackDir = getHomeStackDir();
+  if (!homeStackDir) {
+    return {
+      name: 'minecraft-server',
+      state: 'not_configured',
+      metrics: {},
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+
   const daemonUp = await isDockerDaemonUp();
   if (!daemonUp) {
     return {
@@ -89,7 +125,7 @@ async function getStatus() {
 
   const [containers, relay] = await Promise.all([
     Promise.all(CONTAINERS.map(async (c) => ({ name: c.name, status: await containerStatus(c.container) }))),
-    checkRelay(readRelayAddr()),
+    checkRelay(readRelayAddr(homeStackDir)),
   ]);
 
   const allRunning = containers.every((c) => c.status === 'running') && relay.ok;
@@ -109,7 +145,9 @@ function launchDockerDesktop() {
 }
 
 function runCompose(args) {
-  return execFileP('docker', ['compose', ...args], { cwd: HOME_STACK_DIR, timeout: 120000 });
+  const homeStackDir = getHomeStackDir();
+  if (!homeStackDir) throw new Error('MC_HOME_STACK_DIR not set in .env');
+  return execFileP('docker', ['compose', ...args], { cwd: homeStackDir, timeout: 120000 });
 }
 
 async function startServer() {
@@ -125,7 +163,9 @@ async function restartServer() {
 }
 
 function openServerFiles() {
-  require('electron').shell.openPath(PAPER_DIR);
+  const homeStackDir = getHomeStackDir();
+  if (!homeStackDir) return;
+  require('electron').shell.openPath(path.join(homeStackDir, 'paper'));
 }
 
 // Paper's port isn't reachable from the host (see README), so join/leave
@@ -166,6 +206,4 @@ module.exports = {
   watchJoinLeave,
   stopWatchingLogs,
   launchDockerDesktop,
-  HOME_STACK_DIR,
-  PAPER_DIR,
 };

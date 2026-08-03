@@ -9,14 +9,21 @@ function render(container, data) {
   }
 
   if (data.state === 'not_running') {
+    const exeConfigured = !!collector.getOpenRgbExePath();
     container.innerHTML = `
       <div class="stat-block">
         <div class="status-pill status-offline">OPENRGB NOT RUNNING</div>
         <div class="foot-line">also needs the SDK Server started in OpenRGB's settings</div>
-        <div class="btn-row"><button class="hud-btn" data-action="launch">LAUNCH OPENRGB</button></div>
+        ${
+          exeConfigured
+            ? '<div class="btn-row"><button class="hud-btn" data-action="launch">LAUNCH OPENRGB</button></div>'
+            : '<div class="foot-line">set OPENRGB_EXE_PATH in .env for a launch button</div>'
+        }
       </div>
     `;
-    container.querySelector('[data-action="launch"]').addEventListener('click', () => collector.launchOpenRgb());
+    if (exeConfigured) {
+      container.querySelector('[data-action="launch"]').addEventListener('click', () => collector.launchOpenRgb());
+    }
     return;
   }
 

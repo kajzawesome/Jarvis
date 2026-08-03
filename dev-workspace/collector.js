@@ -22,7 +22,7 @@ async function listEditorWindows() {
   }
 }
 
-// "file:///c%3A/Users/USERNAME/Jarvis" -> "C:\Users\USERNAME\Jarvis"
+// "file:///c%3A/Users/you/Jarvis" -> "C:\Users\you\Jarvis"
 function decodeFileUri(uri) {
   if (!uri || !uri.startsWith('file:///')) return null;
   const decoded = decodeURIComponent(uri.slice(8));

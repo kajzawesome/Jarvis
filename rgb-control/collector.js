@@ -1,10 +1,26 @@
+const fs = require('fs');
+const path = require('path');
 const { Client, utils } = require('openrgb-sdk');
 
 const HOST = '127.0.0.1';
 const PORT = 6742;
-// Path found via the desktop-links taskbar scan - update if OpenRGB moves.
-const OPENRGB_EXE =
-  'C:\\Users\\USERNAME\\Downloads\\OpenRGB_0.9_Windows_64_b5f46e3\\OpenRGB Windows 64-bit\\OpenRGB.exe';
+const JARVIS_ENV_PATH = path.join(__dirname, '..', '.env');
+
+// OpenRGB's install location varies per machine (this one was a portable
+// download to a versioned folder, not a fixed install path) - read from
+// Jarvis's own .env (OPENRGB_EXE_PATH) instead of hardcoding one person's
+// path. The LAUNCH OPENRGB button just stays hidden if it's unset - the
+// SDK connection check (getStatus/setColor) doesn't need this at all, only
+// the manual launch shortcut does.
+function getOpenRgbExePath() {
+  try {
+    const content = fs.readFileSync(JARVIS_ENV_PATH, 'utf-8');
+    const match = content.match(/^OPENRGB_EXE_PATH=(.+)$/m);
+    return match ? match[1].trim() || null : null;
+  } catch {
+    return null;
+  }
+}
 
 async function withClient(fn) {
   const client = new Client('Jarvis', PORT, HOST);
@@ -50,7 +66,9 @@ async function setColor(deviceId, hex) {
 }
 
 function launchOpenRgb() {
-  require('electron').shell.openPath(OPENRGB_EXE);
+  const exePath = getOpenRgbExePath();
+  if (!exePath) return;
+  require('electron').shell.openPath(exePath);
 }
 
-module.exports = { getStatus, setColor, launchOpenRgb };
+module.exports = { getStatus, setColor, launchOpenRgb, getOpenRgbExePath };

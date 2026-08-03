@@ -32,6 +32,52 @@ window.jarvisToast = (title, body) => {
 
 ipcRenderer.on('show-toast', (event, { title, body }) => showToast(title, body));
 
+// ---- theme presets ----
+// Every shared HUD class (buttons, borders, glow, the ambient background,
+// text) reads these same 3 CSS custom properties (--green/--green-dim/
+// --green-faint/--glow) from :root in style.css - the property names stuck
+// with the original green theme's naming, but they're just the "accent
+// color" slots now, regardless of which preset is active. Applying a theme
+// is just overriding those 4 custom properties on the root element - no
+// separate stylesheet per theme, no class-per-theme CSS to maintain.
+const THEMES = {
+  green: {
+    green: '#00ff9c',
+    greenDim: '#0a5c38',
+    greenFaint: '#063321',
+    glow: '0 0 6px rgba(0, 255, 156, 0.55), 0 0 18px rgba(0, 255, 156, 0.15)',
+  },
+  blue: {
+    green: '#00c3ff',
+    greenDim: '#0a4a6b',
+    greenFaint: '#052635',
+    glow: '0 0 6px rgba(0, 195, 255, 0.55), 0 0 18px rgba(0, 195, 255, 0.15)',
+  },
+  amber: {
+    green: '#ffb300',
+    greenDim: '#6b4a0a',
+    greenFaint: '#352505',
+    glow: '0 0 6px rgba(255, 179, 0, 0.55), 0 0 18px rgba(255, 179, 0, 0.15)',
+  },
+  purple: {
+    green: '#b877ff',
+    greenDim: '#4a2a6b',
+    greenFaint: '#251535',
+    glow: '0 0 6px rgba(184, 119, 255, 0.55), 0 0 18px rgba(184, 119, 255, 0.15)',
+  },
+};
+
+function applyTheme(name) {
+  const theme = THEMES[name] || THEMES.green;
+  const root = document.documentElement.style;
+  root.setProperty('--green', theme.green);
+  root.setProperty('--green-dim', theme.greenDim);
+  root.setProperty('--green-faint', theme.greenFaint);
+  root.setProperty('--glow', theme.glow);
+  const select = document.getElementById('theme-select');
+  if (select) select.value = THEMES[name] ? name : 'green';
+}
+
 const ROOT = path.resolve(__dirname, '..', '..'); // Jarvis/
 
 // ---- node discovery: any Jarvis/<folder>/node.json is a node ----
@@ -443,6 +489,18 @@ reduceMotionBtn.addEventListener('click', async () => {
   applyReduceMotion(on);
 });
 ipcRenderer.on('reduce-motion-changed', (event, on) => applyReduceMotion(on));
+
+// Global (not per-screen) accent color theme - same broadcast pattern as
+// reduce-motion above. THEMES/applyTheme are defined near the top of this
+// file (before node discovery) so a node's very first render already has
+// the right colors, not just the default green for one frame.
+const themeSelect = document.getElementById('theme-select');
+ipcRenderer.invoke('get-theme').then(applyTheme);
+themeSelect.addEventListener('change', async () => {
+  const name = await ipcRenderer.invoke('set-theme', themeSelect.value);
+  applyTheme(name);
+});
+ipcRenderer.on('theme-changed', (event, name) => applyTheme(name));
 
 function switchPreset(name) {
   if (!layoutsData.presets[name]) return false;

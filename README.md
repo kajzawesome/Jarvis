@@ -53,6 +53,7 @@ Everything the HUD displays is a **node**: a self-contained folder that reports 
 | [dev-workspace](dev-workspace/README.md) | 🟢 active | Open editor windows (click to focus) + git branch/dirty/ahead-behind for known VS Code projects (click to open) |
 | [connectors](connectors/README.md) | 🟡 planned | Integration hub — Discord (scoped, not built — see BACKLOG.md), etc. |
 | [ai-agents](ai-agents/README.md) | 🔵 future | Status board for Claude Code / background agents |
+| [example-node](example-node/README.md) | 🟢 active | Not a real feature — copy this folder to start building your own node (see "Adding a new node" below) |
 
 ## Shape of the system
 
@@ -73,6 +74,10 @@ Jarvis/
 ```
 
 ## Adding a new node
+
+**Fastest path: copy [example-node/](example-node/)**, rename the folder, and edit its 4 files — it's a small, genuinely working node (not a disabled stub) with heavily-commented `collector.js`/`widget.js` demonstrating the full contract, including an action button and the shared HUD classes. Its own README walks through exactly what to change.
+
+The contract it's demonstrating, spelled out:
 
 Any top-level folder containing a `node.json` is auto-discovered on launch — no other wiring required. To add one:
 
@@ -111,6 +116,7 @@ Built with Electron ([dashboard/](dashboard/)) — one borderless window per mon
 - **Toast notifications** — any node can call `window.jarvisToast(title, body)` to pop a HUD alert on every open screen. Used by minecraft-server's join/leave watcher and pomodoro's session-end alert.
 - **Autostart** — toggled via the `AUTOSTART` button (or the tray menu); persists in `dashboard/config.json`.
 - **Reduce motion** — toggled via the `REDUCE MOTION` button; turns off the animated ambient background (drifting grid, scan sweep, pulse glow). One global setting shared by every open screen, persists in `dashboard/config.json`. See "Performance" below.
+- **Theme** — the `THEME` dropdown switches the accent color live (green/blue/amber/purple). See "Customizing the look" below.
 
 ## Performance
 
@@ -139,7 +145,9 @@ The whole black/green/white theme is a handful of CSS custom properties at the t
 }
 ```
 
-Every shared HUD class (`.hud-btn`, `.row`, `.status-pill`, tile borders, the ambient background, etc.) references these — change the values here and it recolors the entire app, not just one widget. Want a blue HUD instead of green? Swap `--green`/`--green-dim`/`--green-faint` and adjust `--glow`'s color to match; everything else (layout, animations, container-query text scaling) is untouched. A node's own `widget.js` should stick to the shared classes rather than hardcoding colors, precisely so this stays a one-file change — see "Adding a new node" above.
+Every shared HUD class (`.hud-btn`, `.row`, `.status-pill`, tile borders, the ambient background, etc.) references these — change the values here and it recolors the entire app, not just one widget. A node's own `widget.js` should stick to the shared classes rather than hardcoding colors, precisely so this stays a one-file change — see "Adding a new node" above.
+
+**Or skip editing CSS entirely** — the `THEME` dropdown in the top bar switches between 4 built-in accent-color presets (GREEN/BLUE/AMBER/PURPLE) live, no restart needed. It's the same 4 variables above (`--green`/`--green-dim`/`--green-faint`/`--glow`) swapped at runtime (`THEMES` table in `dashboard/renderer/app.js`) rather than a separate stylesheet per theme. Global like `REDUCE MOTION`/`AUTOSTART` — one setting for every open screen, persists in `dashboard/config.json`. Want a 5th preset? Add an entry to `THEMES` in `app.js` and an `<option>` in `index.html`'s `#theme-select` — main.js's `THEME_NAMES` array needs the new name added too (it validates theme names before writing them to disk).
 
 ## Open questions for later
 
@@ -147,3 +155,7 @@ Every shared HUD class (`.hud-btn`, `.row`, `.status-pill`, tile borders, the am
 - `rgb-control` needs OpenRGB's SDK Server toggled on (off by default) to actually connect.
 - Discord integration is scoped (both directions) but not built — see [BACKLOG.md](BACKLOG.md).
 - Push vs pull: most nodes poll on an interval (`refreshMs`); minecraft-server's join/leave already moved to push (log tailing) — twitch/spotify could similarly move to webhooks/events later instead of polling.
+
+## License
+
+[MIT](LICENSE) — use it, fork it, send a PR for a new node or a fix.

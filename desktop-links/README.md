@@ -4,6 +4,8 @@ Clickable app/folder/URL shortcuts, rendered as a HUD tile — this is what make
 
 ## Status: 🟢 active
 
+`links.json`, `excluded.json`, and `icons/*.png` are gitignored — real personal data (your actual file paths, Windows username, installed-app inventory), not something that belongs in a shared repo. Starts empty on a fresh clone; use "+ ADD APP"/"+ URL" in edit mode or run `migrate-from-desktop.ps1` to populate it with your own.
+
 ## Adding links
 
 Three tiles in edit mode:
