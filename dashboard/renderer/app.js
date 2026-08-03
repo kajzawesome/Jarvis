@@ -8,6 +8,30 @@ const PRIMARY = params.get('primary') === '1';
 const SCREEN_INDEX = params.get('screen') || '0';
 const TOTAL_SCREENS = parseInt(params.get('totalScreens') || '1', 10);
 
+// ---- toast notifications ----
+// Exposed globally so any node's widget.js can call window.jarvisToast(...)
+// directly (widgets run in this same renderer/global scope) to broadcast a
+// notification to every open screen, not just its own. Defined this early
+// (before node discovery/grid setup) deliberately - the very first layout
+// load can itself trigger a toast (see pruneOffscreenItems below), and a
+// call to window.jarvisToast before this assignment ran would silently
+// no-op instead of showing anything.
+function showToast(title, body) {
+  const stack = document.getElementById('toast-stack');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<div class="toast-title">${title}</div><div class="toast-body">${body}</div>`;
+  stack.appendChild(el);
+  setTimeout(() => el.remove(), 6200);
+}
+
+window.jarvisToast = (title, body) => {
+  showToast(title, body);
+  ipcRenderer.send('toast-broadcast', { title, body });
+};
+
+ipcRenderer.on('show-toast', (event, { title, body }) => showToast(title, body));
+
 const ROOT = path.resolve(__dirname, '..', '..'); // Jarvis/
 
 // ---- node discovery: any Jarvis/<folder>/node.json is a node ----
@@ -43,10 +67,101 @@ const placedIds = new Set();
 const refreshFns = {};
 const pendingMoves = {}; // nodeId -> { el } while awaiting move-node-result
 
+// ---- pause background work while hidden/minimized ----
+// Electron only stops rendering/compositing a hidden or minimized window -
+// it keeps running the renderer's JS at full speed, so every node's
+// setInterval (including the ones that shell out to PowerShell/WMI/docker/
+// network calls every few seconds) kept firing even after hiding Jarvis to
+// go play a game, fighting it for CPU. document.visibilityState/
+// visibilitychange fires 'hidden' for both an explicit hide() (the tray's
+// Show/Hide All, Ctrl+Alt+J, the X button) and a plain OS minimize
+// (confirmed live, not assumed) - use it to stop every node's timer while
+// nothing's visible anyway, and catch up with one immediate refresh each
+// plus restart them the moment this screen is visible again.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    Object.entries(timers).forEach(([nodeId, id]) => clearInterval(id));
+  } else {
+    Object.entries(refreshFns).forEach(([nodeId, refresh]) => {
+      refresh();
+      const node = NODES[nodeId];
+      if (node && node.refreshMs > 0) timers[nodeId] = setInterval(refresh, node.refreshMs);
+    });
+  }
+});
+
+const GRID_CELL_HEIGHT = 70;
+const GRID_MARGIN = 8;
+
 const grid = GridStack.init(
-  { cellHeight: 70, margin: 8, float: true, staticGrid: true },
+  { cellHeight: GRID_CELL_HEIGHT, margin: GRID_MARGIN, float: true, staticGrid: true },
   '#grid'
 );
+
+// How many grid rows actually fit in this screen's visible grid area right
+// now. There's no vertical scrolling (by design - see the "no scroll"
+// comment below), so a row beyond this is invisible and, until the fixes
+// below landed, unremovable - the grid had no ceiling on how far down an
+// auto-placed or resized tile could land.
+function maxVisibleRows() {
+  const wrap = document.querySelector('.grid-wrap');
+  return Math.max(1, Math.floor((wrap.clientHeight + GRID_MARGIN) / (GRID_CELL_HEIGHT + GRID_MARGIN)));
+}
+
+// Bounded first-fit scan for a genuinely-visible empty slot, row-major
+// (top-left first) - unlike GridStack's own built-in auto-position, which
+// has no concept of "visible" and will happily hand back a slot below the
+// fold if nothing higher up fits. Returns null if nothing on-screen fits.
+function findVisibleSlot(w, h) {
+  const cols = grid.getColumn();
+  const rows = maxVisibleRows();
+  if (w > cols || h > rows) return null;
+  for (let y = 0; y <= rows - h; y++) {
+    for (let x = 0; x <= cols - w; x++) {
+      if (grid.isAreaEmpty(x, y, w, h)) return { x, y };
+    }
+  }
+  return null;
+}
+
+// Removes any currently-placed tile whose position/size no longer fits
+// entirely within the visible grid (partially or fully cut off below the
+// fold, or - defensively - past the column edge). Runs after loading a
+// layout, after any interactive drag/resize, and right before a save, so a
+// tile can never end up invisible *and* impossible to remove through the
+// normal UI (which is exactly what an off-screen tile is, since its own
+// close button is off-screen too).
+function pruneOffscreenItems(reason) {
+  const cols = grid.getColumn();
+  const rows = maxVisibleRows();
+  const removedLabels = [];
+
+  Array.from(placedIds).forEach((nodeId) => {
+    const el = grid.el.querySelector(`[gs-id="${nodeId}"]`);
+    const n = el && el.gridstackNode;
+    if (!n) return;
+    const outOfBounds = n.x < 0 || n.y < 0 || n.x + n.w > cols || n.y + n.h > rows;
+    if (!outOfBounds) return;
+
+    removedLabels.push(NODES[nodeId]?.label || nodeId);
+    clearInterval(timers[nodeId]);
+    delete timers[nodeId];
+    delete refreshFns[nodeId];
+    grid.removeWidget(el);
+    placedIds.delete(nodeId);
+  });
+
+  if (removedLabels.length) {
+    renderPalette();
+    if (window.jarvisToast) {
+      const plural = removedLabels.length > 1;
+      window.jarvisToast(
+        `Removed off-screen tile${plural ? 's' : ''}`,
+        `${removedLabels.join(', ')} didn't fit this screen's visible area${reason ? ' ' + reason : ''} and ${plural ? 'were' : 'was'} removed.`
+      );
+    }
+  }
+}
 
 let editMode = false;
 
@@ -143,7 +258,12 @@ function mountNode(nodeId, el) {
 
   refresh();
   refreshFns[nodeId] = refresh;
-  if (node.refreshMs > 0) {
+  // Don't start a live interval while this screen is hidden/minimized (e.g.
+  // a node just got moved here from another screen while this one was
+  // hidden) - the visibilitychange handler below is what starts/stops
+  // every node's timer together, and starting one here too would double it
+  // up once this screen becomes visible again.
+  if (node.refreshMs > 0 && document.visibilityState !== 'hidden') {
     timers[nodeId] = setInterval(refresh, node.refreshMs);
   }
 
@@ -176,11 +296,29 @@ function addNodeToGrid(nodeId, opts = {}) {
   const w = opts.w || node.defaultSize?.w || 4;
   const h = opts.h || node.defaultSize?.h || 4;
 
+  let { x, y } = opts;
+  if (x == null || y == null) {
+    // No explicit position (palette drag, or a cross-screen move landing
+    // here) - find a slot that's actually visible rather than letting
+    // GridStack's own auto-position hand back the first empty cell
+    // anywhere, fold or no fold (that's what put an unreachable, unclosable
+    // weather tile below the visible area on a second monitor).
+    const slot = findVisibleSlot(w, h);
+    if (!slot) {
+      if (window.jarvisToast) {
+        window.jarvisToast('No room', `${node.label} doesn't fit anywhere on this screen — remove or resize something first.`);
+      }
+      return false;
+    }
+    x = slot.x;
+    y = slot.y;
+  }
+
   const el = grid.addWidget({
     w,
     h,
-    x: opts.x,
-    y: opts.y,
+    x,
+    y,
     id: nodeId,
     content: '<div class="grid-stack-item-content"></div>',
   });
@@ -219,6 +357,13 @@ function applyLayout(items) {
   grid.removeAll();
   placedIds.clear();
   items.forEach((it) => addNodeToGrid(it.id, it));
+  // A saved item's x/y is trusted as-is above (unlike a fresh drag, which
+  // already gets a bounds-checked slot) - this is what catches a stale
+  // saved layout that predates the bounds check, or one saved on a bigger
+  // screen than this one. Doesn't rewrite layouts.json itself (that only
+  // happens on an explicit SAVE ALL AS - not silently, from a load), so
+  // this stays a live-view fix until you save again.
+  pruneOffscreenItems('when this layout was loaded — SAVE ALL AS... again to make this permanent');
 }
 
 function populateLayoutSelect(layoutsData) {
@@ -290,8 +435,11 @@ ipcRenderer.on('save-all-complete', (event, presetName) => {
 });
 
 // Main process asks every open window to report its current grid so a
-// save-all can bundle them into one linked preset.
+// save-all can bundle them into one linked preset. Prune first so an
+// off-screen tile - however it got that way - never actually makes it into
+// a saved preset.
 ipcRenderer.on('report-layout', () => {
+  pruneOffscreenItems('before this layout was saved');
   const items = grid.save(false).map((it) => {
     const el = document.querySelector(`[gs-id="${it.id}"]`);
     return {
@@ -356,26 +504,6 @@ document.getElementById('min-btn').addEventListener('click', () => ipcRenderer.s
 document.getElementById('close-btn').addEventListener('click', () => ipcRenderer.send('window-hide'));
 
 setEditMode(false);
-
-// ---- toast notifications ----
-// Exposed globally so any node's widget.js can call window.jarvisToast(...)
-// directly (widgets run in this same renderer/global scope) to broadcast a
-// notification to every open screen, not just its own.
-function showToast(title, body) {
-  const stack = document.getElementById('toast-stack');
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.innerHTML = `<div class="toast-title">${title}</div><div class="toast-body">${body}</div>`;
-  stack.appendChild(el);
-  setTimeout(() => el.remove(), 6200);
-}
-
-window.jarvisToast = (title, body) => {
-  showToast(title, body);
-  ipcRenderer.send('toast-broadcast', { title, body });
-};
-
-ipcRenderer.on('show-toast', (event, { title, body }) => showToast(title, body));
 
 // main.js re-syncs desktop-links against the real Windows Desktop on every
 // launch (see syncDesktopLinks in main.js); once that write lands, force

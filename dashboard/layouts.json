@@ -44,7 +44,221 @@
           "h": 8
         }
       ]
+    },
+    "Default": {
+      "0": [
+        {
+          "id": "productivity",
+          "x": 0,
+          "y": 0,
+          "w": 4,
+          "h": 6,
+          "headerHidden": false
+        },
+        {
+          "id": "todo",
+          "x": 4,
+          "y": 0,
+          "w": 4,
+          "h": 6,
+          "headerHidden": false
+        },
+        {
+          "id": "pomodoro",
+          "x": 8,
+          "y": 0,
+          "w": 2,
+          "h": 3,
+          "headerHidden": false
+        },
+        {
+          "id": "clipboard-history",
+          "x": 10,
+          "y": 0,
+          "w": 2,
+          "h": 6,
+          "headerHidden": false
+        },
+        {
+          "id": "quick-capture",
+          "x": 8,
+          "y": 3,
+          "w": 2,
+          "h": 3,
+          "headerHidden": false
+        },
+        {
+          "id": "visa-status",
+          "x": 0,
+          "y": 6,
+          "w": 4,
+          "h": 4,
+          "headerHidden": false
+        },
+        {
+          "id": "world-clock",
+          "x": 4,
+          "y": 6,
+          "w": 4,
+          "h": 4,
+          "headerHidden": false
+        },
+        {
+          "id": "tech-news",
+          "x": 8,
+          "y": 6,
+          "w": 4,
+          "h": 8,
+          "headerHidden": false
+        },
+        {
+          "id": "exchange-rate",
+          "x": 4,
+          "y": 10,
+          "w": 4,
+          "h": 3,
+          "headerHidden": false
+        },
+        {
+          "id": "down-tracker",
+          "x": 4,
+          "y": 13,
+          "w": 4,
+          "h": 6,
+          "headerHidden": false
+        },
+        {
+          "id": "spotify",
+          "x": 8,
+          "y": 14,
+          "w": 4,
+          "h": 5,
+          "headerHidden": false
+        },
+        {
+          "id": "weather-alerts",
+          "x": 0,
+          "y": 16,
+          "w": 4,
+          "h": 3,
+          "headerHidden": false
+        },
+        {
+          "id": "weather",
+          "x": 8,
+          "y": 21,
+          "w": 3,
+          "h": 3,
+          "headerHidden": false
+        }
+      ],
+      "1": [
+        {
+          "id": "desktop-links",
+          "x": 0,
+          "y": 0,
+          "w": 3,
+          "h": 7,
+          "headerHidden": false
+        },
+        {
+          "id": "twitch",
+          "x": 3,
+          "y": 0,
+          "w": 2,
+          "h": 2,
+          "headerHidden": false
+        },
+        {
+          "id": "streamlabs",
+          "x": 5,
+          "y": 0,
+          "w": 3,
+          "h": 2,
+          "headerHidden": false
+        },
+        {
+          "id": "github-activity",
+          "x": 8,
+          "y": 0,
+          "w": 4,
+          "h": 7,
+          "headerHidden": false
+        },
+        {
+          "id": "minecraft-server",
+          "x": 3,
+          "y": 2,
+          "w": 3,
+          "h": 2,
+          "headerHidden": false
+        },
+        {
+          "id": "network-speed",
+          "x": 6,
+          "y": 2,
+          "w": 2,
+          "h": 2,
+          "headerHidden": false
+        },
+        {
+          "id": "rgb-control",
+          "x": 3,
+          "y": 4,
+          "w": 3,
+          "h": 5,
+          "headerHidden": false
+        },
+        {
+          "id": "docker-images",
+          "x": 6,
+          "y": 4,
+          "w": 2,
+          "h": 3,
+          "headerHidden": false
+        },
+        {
+          "id": "pc-stats",
+          "x": 0,
+          "y": 7,
+          "w": 3,
+          "h": 5,
+          "headerHidden": false
+        },
+        {
+          "id": "google-calendar",
+          "x": 6,
+          "y": 7,
+          "w": 6,
+          "h": 12,
+          "headerHidden": false
+        },
+        {
+          "id": "router-network",
+          "x": 3,
+          "y": 9,
+          "w": 3,
+          "h": 5,
+          "headerHidden": false
+        },
+        {
+          "id": "system-health",
+          "x": 0,
+          "y": 12,
+          "w": 3,
+          "h": 7,
+          "headerHidden": false
+        },
+        {
+          "id": "voice-control",
+          "x": 3,
+          "y": 14,
+          "w": 3,
+          "h": 5,
+          "headerHidden": false
+        }
+      ]
     }
   },
-  "activePreset": "default"
+  "activePreset": "Default"
 }

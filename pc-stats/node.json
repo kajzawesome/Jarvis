@@ -5,6 +5,6 @@
   "collectorFn": "getStats",
   "collectorArgs": [],
   "widget": "./widget.js",
-  "refreshMs": 4000,
+  "refreshMs": 8000,
   "defaultSize": { "w": 4, "h": 4 }
 }

@@ -15,6 +15,15 @@ function pickRealGpu(controllers) {
   );
 }
 
+// Both of these shell out to a whole separate process (nvidia-smi, or a
+// full powershell.exe running a WMI query) - real CPU/process-spawn cost,
+// noticeable when it's competing with something like a game for resources.
+// Fan/temp sensors don't need to be as fresh as CPU%/RAM%, so these are
+// cached independently of the main refresh cadence rather than re-spawned
+// on every single getStats() call.
+const SENSOR_CACHE_MS = 20000;
+let sensorCache = { at: 0, nvidiaFanPct: null, lhmSensors: null };
+
 async function queryNvidiaFanPct() {
   try {
     const { stdout } = await execFileP(
@@ -51,6 +60,16 @@ async function queryLibreHardwareMonitorSensors() {
   }
 }
 
+async function getCachedSensors(isNvidia) {
+  if (Date.now() - sensorCache.at < SENSOR_CACHE_MS) return sensorCache;
+  const [nvidiaFanPct, lhmSensors] = await Promise.all([
+    isNvidia ? queryNvidiaFanPct() : Promise.resolve(null),
+    queryLibreHardwareMonitorSensors(),
+  ]);
+  sensorCache = { at: Date.now(), nvidiaFanPct, lhmSensors };
+  return sensorCache;
+}
+
 async function getStats() {
   const [cpu, cpuTemp, mem, fsSize, currentLoad, time, graphics] = await Promise.all([
     si.cpu(),
@@ -65,10 +84,7 @@ async function getStats() {
   const gc = pickRealGpu(graphics.controllers);
   const isNvidia = gc && /nvidia/i.test(gc.vendor || gc.model || '');
 
-  const [nvidiaFanPct, lhmSensors] = await Promise.all([
-    isNvidia ? queryNvidiaFanPct() : Promise.resolve(null),
-    queryLibreHardwareMonitorSensors(),
-  ]);
+  const { nvidiaFanPct, lhmSensors } = await getCachedSensors(isNvidia);
 
   let gpu = null;
   if (gc) {
