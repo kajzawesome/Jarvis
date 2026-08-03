@@ -49,7 +49,16 @@ function createWindows() {
       width: display.bounds.width,
       height: display.bounds.height,
       frame: false,
-      fullscreen: true,
+      // Deliberately NOT fullscreen:true - on Windows that's "exclusive
+      // fullscreen" (the same mode a game/video player uses), which
+      // suppresses the taskbar entirely: no hover, no click, nothing gets
+      // through until the app exits fullscreen. Sizing the window to the
+      // full display bounds without setting fullscreen still visually
+      // fills the screen (same pixels), but Windows keeps the shell
+      // taskbar as its own always-on-top surface on top of a plain window,
+      // so it stays reachable without needing Ctrl+Alt+J to hide Jarvis
+      // first every time.
+      fullscreen: false,
       show: false,
       backgroundColor: '#020403',
       skipTaskbar: !isPrimary,
@@ -240,6 +249,31 @@ ipcMain.on('layout-report', (event, screenIndex, items) => {
     windows.forEach((w) => !w.isDestroyed() && w.webContents.send('layouts-changed'));
     const initiator = windows.find((w) => !w.isDestroyed() && w.webContents.id === initiatorId);
     if (initiator) initiator.webContents.send('save-all-complete', presetName);
+  }
+});
+
+// Deletes a saved preset. Always leaves at least one preset behind (the
+// renderer's DELETE PRESET button is already disabled when only one
+// remains, but re-checked here too since main.js shouldn't trust the
+// renderer alone for something destructive). If the deleted preset was the
+// active one, falls back to 'default' if it still exists, otherwise
+// whatever preset happens to be first.
+ipcMain.on('delete-preset-request', (event, presetName) => {
+  const layoutsData = readLayouts();
+  const names = Object.keys(layoutsData.presets);
+  if (!layoutsData.presets[presetName] || names.length <= 1) return;
+
+  delete layoutsData.presets[presetName];
+  if (layoutsData.activePreset === presetName) {
+    const remaining = Object.keys(layoutsData.presets);
+    layoutsData.activePreset = remaining.includes('default') ? 'default' : remaining[0];
+  }
+  writeLayouts(layoutsData);
+
+  windows.forEach((w) => !w.isDestroyed() && w.webContents.send('layouts-changed'));
+  const initiator = BrowserWindow.fromWebContents(event.sender);
+  if (initiator && !initiator.isDestroyed()) {
+    initiator.webContents.send('preset-deleted', { presetName, newActivePreset: layoutsData.activePreset });
   }
 });
 

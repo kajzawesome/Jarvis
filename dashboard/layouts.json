@@ -1,38 +1,5 @@
 {
   "presets": {
-    "default": {
-      "0": [],
-      "1": [
-        {
-          "id": "desktop-links",
-          "x": 0,
-          "y": 0,
-          "w": 4,
-          "h": 4
-        },
-        {
-          "id": "pc-stats",
-          "x": 4,
-          "y": 0,
-          "w": 4,
-          "h": 4
-        },
-        {
-          "id": "minecraft-server",
-          "x": 8,
-          "y": 0,
-          "w": 4,
-          "h": 4
-        },
-        {
-          "id": "productivity",
-          "x": 0,
-          "y": 4,
-          "w": 4,
-          "h": 5
-        }
-      ]
-    },
     "focus": {
       "0": [],
       "1": [
@@ -61,7 +28,7 @@
           "y": 0,
           "w": 4,
           "h": 6,
-          "headerHidden": false
+          "headerHidden": true
         },
         {
           "id": "pomodoro",
@@ -69,7 +36,7 @@
           "y": 0,
           "w": 2,
           "h": 3,
-          "headerHidden": false
+          "headerHidden": true
         },
         {
           "id": "clipboard-history",
@@ -77,7 +44,7 @@
           "y": 0,
           "w": 2,
           "h": 6,
-          "headerHidden": false
+          "headerHidden": true
         },
         {
           "id": "quick-capture",
@@ -92,7 +59,7 @@
           "x": 0,
           "y": 6,
           "w": 4,
-          "h": 4,
+          "h": 3,
           "headerHidden": false
         },
         {
@@ -101,7 +68,7 @@
           "y": 6,
           "w": 4,
           "h": 4,
-          "headerHidden": false
+          "headerHidden": true
         },
         {
           "id": "tech-news",
@@ -112,11 +79,27 @@
           "headerHidden": false
         },
         {
+          "id": "weather",
+          "x": 0,
+          "y": 9,
+          "w": 4,
+          "h": 4,
+          "headerHidden": true
+        },
+        {
           "id": "exchange-rate",
           "x": 4,
           "y": 10,
           "w": 4,
           "h": 3,
+          "headerHidden": true
+        },
+        {
+          "id": "weather-alerts",
+          "x": 0,
+          "y": 13,
+          "w": 4,
+          "h": 6,
           "headerHidden": false
         },
         {
@@ -133,22 +116,6 @@
           "y": 14,
           "w": 4,
           "h": 5,
-          "headerHidden": false
-        },
-        {
-          "id": "weather-alerts",
-          "x": 0,
-          "y": 16,
-          "w": 4,
-          "h": 3,
-          "headerHidden": false
-        },
-        {
-          "id": "weather",
-          "x": 8,
-          "y": 21,
-          "w": 3,
-          "h": 3,
           "headerHidden": false
         }
       ],
@@ -182,7 +149,7 @@
           "x": 8,
           "y": 0,
           "w": 4,
-          "h": 7,
+          "h": 8,
           "headerHidden": false
         },
         {
@@ -194,25 +161,25 @@
           "headerHidden": false
         },
         {
-          "id": "network-speed",
+          "id": "dev-workspace",
           "x": 6,
           "y": 2,
           "w": 2,
-          "h": 2,
+          "h": 3,
+          "headerHidden": false
+        },
+        {
+          "id": "voice-control",
+          "x": 3,
+          "y": 4,
+          "w": 3,
+          "h": 3,
           "headerHidden": false
         },
         {
           "id": "rgb-control",
-          "x": 3,
-          "y": 4,
-          "w": 3,
-          "h": 5,
-          "headerHidden": false
-        },
-        {
-          "id": "docker-images",
           "x": 6,
-          "y": 4,
+          "y": 5,
           "w": 2,
           "h": 3,
           "headerHidden": false
@@ -222,39 +189,47 @@
           "x": 0,
           "y": 7,
           "w": 3,
-          "h": 5,
+          "h": 6,
+          "headerHidden": false
+        },
+        {
+          "id": "docker-images",
+          "x": 3,
+          "y": 7,
+          "w": 3,
+          "h": 6,
           "headerHidden": false
         },
         {
           "id": "google-calendar",
           "x": 6,
-          "y": 7,
+          "y": 8,
           "w": 6,
-          "h": 12,
+          "h": 11,
           "headerHidden": false
         },
         {
-          "id": "router-network",
-          "x": 3,
-          "y": 9,
+          "id": "network-speed",
+          "x": 0,
+          "y": 13,
           "w": 3,
-          "h": 5,
+          "h": 3,
           "headerHidden": false
         },
         {
           "id": "system-health",
-          "x": 0,
-          "y": 12,
+          "x": 3,
+          "y": 13,
           "w": 3,
-          "h": 7,
+          "h": 6,
           "headerHidden": false
         },
         {
-          "id": "voice-control",
-          "x": 3,
-          "y": 14,
+          "id": "router-network",
+          "x": 0,
+          "y": 16,
           "w": 3,
-          "h": 5,
+          "h": 3,
           "headerHidden": false
         }
       ]

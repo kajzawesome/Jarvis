@@ -124,43 +124,50 @@ function findVisibleSlot(w, h) {
   return null;
 }
 
-// Removes any currently-placed tile whose position/size no longer fits
-// entirely within the visible grid (partially or fully cut off below the
-// fold, or - defensively - past the column edge). Runs after loading a
-// layout, after any interactive drag/resize, and right before a save, so a
-// tile can never end up invisible *and* impossible to remove through the
-// normal UI (which is exactly what an off-screen tile is, since its own
-// close button is off-screen too).
+// Warns (but no longer deletes - see removeNodeFromGrid/the palette-list ×
+// below for how to actually get rid of an off-screen tile) about any
+// currently-placed tile whose position/size doesn't fit entirely within the
+// visible grid. Auto-deleting here used to be the "fix" for an off-screen
+// tile being unremovable (its own on-grid × is off-screen too) - but that
+// meant the app was silently deleting arranged content on load/save, which
+// read as broken/untrustworthy even when the bounds math itself was
+// correct. The actual fix for "unremovable" is a removal path that doesn't
+// depend on the tile being visible at all (the palette list's × below,
+// always reachable in edit mode) - so nothing needs to be auto-deleted
+// anymore, this is purely informational.
 function pruneOffscreenItems(reason) {
   const cols = grid.getColumn();
   const rows = maxVisibleRows();
-  const removedLabels = [];
+  const offscreenLabels = [];
 
   Array.from(placedIds).forEach((nodeId) => {
     const el = grid.el.querySelector(`[gs-id="${nodeId}"]`);
     const n = el && el.gridstackNode;
     if (!n) return;
     const outOfBounds = n.x < 0 || n.y < 0 || n.x + n.w > cols || n.y + n.h > rows;
-    if (!outOfBounds) return;
-
-    removedLabels.push(NODES[nodeId]?.label || nodeId);
-    clearInterval(timers[nodeId]);
-    delete timers[nodeId];
-    delete refreshFns[nodeId];
-    grid.removeWidget(el);
-    placedIds.delete(nodeId);
+    if (outOfBounds) offscreenLabels.push(NODES[nodeId]?.label || nodeId);
   });
 
-  if (removedLabels.length) {
-    renderPalette();
-    if (window.jarvisToast) {
-      const plural = removedLabels.length > 1;
-      window.jarvisToast(
-        `Removed off-screen tile${plural ? 's' : ''}`,
-        `${removedLabels.join(', ')} didn't fit this screen's visible area${reason ? ' ' + reason : ''} and ${plural ? 'were' : 'was'} removed.`
-      );
-    }
+  if (offscreenLabels.length && window.jarvisToast) {
+    const plural = offscreenLabels.length > 1;
+    window.jarvisToast(
+      `Tile${plural ? 's' : ''} off-screen`,
+      `${offscreenLabels.join(', ')} ${plural ? "don't" : "doesn't"} fit this screen's visible area${reason ? ' ' + reason : ''}. Nothing was deleted — remove ${plural ? 'them' : 'it'} from the palette list (left panel, edit mode) if you don't want ${plural ? 'them' : 'it'} anymore.`
+    );
   }
+}
+
+// Shared by the on-tile × (mountNode) and the palette list's × (renderPalette)
+// - the palette one works even when the tile is off-screen, since it doesn't
+// look the element up by visibility, just by nodeId.
+function removeNodeFromGrid(nodeId) {
+  const el = grid.el.querySelector(`[gs-id="${nodeId}"]`);
+  clearInterval(timers[nodeId]);
+  delete timers[nodeId];
+  delete refreshFns[nodeId];
+  if (el) grid.removeWidget(el);
+  placedIds.delete(nodeId);
+  renderPalette();
 }
 
 let editMode = false;
@@ -267,14 +274,7 @@ function mountNode(nodeId, el) {
     timers[nodeId] = setInterval(refresh, node.refreshMs);
   }
 
-  content.querySelector('.node-panel-close').addEventListener('click', () => {
-    clearInterval(timers[nodeId]);
-    delete timers[nodeId];
-    delete refreshFns[nodeId];
-    grid.removeWidget(el);
-    placedIds.delete(nodeId);
-    renderPalette();
-  });
+  content.querySelector('.node-panel-close').addEventListener('click', () => removeNodeFromGrid(nodeId));
 }
 
 // "Never show a scrollbar" is enforced entirely at the CSS level
@@ -338,8 +338,28 @@ function renderPalette() {
     const item = document.createElement('div');
     const isPlaced = placedIds.has(node.id);
     item.className = 'palette-item' + (isPlaced ? ' placed' : '');
-    item.textContent = node.label;
-    if (!isPlaced) {
+
+    const label = document.createElement('span');
+    label.className = 'palette-item-label';
+    label.textContent = node.label;
+    item.appendChild(label);
+
+    if (isPlaced) {
+      // Works even if this tile is currently off-screen (cut off below the
+      // fold) - looked up by nodeId, not by finding a visible element to
+      // click on, which is the whole point: an off-screen tile's own
+      // on-grid × is off-screen too, so this is the one removal path
+      // that's always reachable regardless of where the tile actually is.
+      const removeBtn = document.createElement('span');
+      removeBtn.className = 'palette-item-remove';
+      removeBtn.textContent = '×';
+      removeBtn.title = 'Remove from this screen (works even if off-screen)';
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeNodeFromGrid(node.id);
+      });
+      item.appendChild(removeBtn);
+    } else {
       item.draggable = true;
       item.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('text/node-id', node.id);
@@ -358,12 +378,10 @@ function applyLayout(items) {
   placedIds.clear();
   items.forEach((it) => addNodeToGrid(it.id, it));
   // A saved item's x/y is trusted as-is above (unlike a fresh drag, which
-  // already gets a bounds-checked slot) - this is what catches a stale
+  // already gets a bounds-checked slot) - this is what surfaces a stale
   // saved layout that predates the bounds check, or one saved on a bigger
-  // screen than this one. Doesn't rewrite layouts.json itself (that only
-  // happens on an explicit SAVE ALL AS - not silently, from a load), so
-  // this stays a live-view fix until you save again.
-  pruneOffscreenItems('when this layout was loaded — SAVE ALL AS... again to make this permanent');
+  // screen than this one. Purely informational - nothing gets deleted.
+  pruneOffscreenItems('when this layout was loaded');
 }
 
 function populateLayoutSelect(layoutsData) {
@@ -376,6 +394,12 @@ function populateLayoutSelect(layoutsData) {
     if (name === layoutsData.activePreset) opt.selected = true;
     sel.appendChild(opt);
   });
+
+  const presetCount = Object.keys(layoutsData.presets).length;
+  document.getElementById('update-layout-btn').textContent = `UPDATE "${layoutsData.activePreset.toUpperCase()}"`;
+  const deleteBtn = document.getElementById('delete-layout-btn');
+  deleteBtn.disabled = presetCount <= 1;
+  deleteBtn.title = presetCount <= 1 ? "Can't delete the only remaining preset" : '';
 }
 
 let layoutsData = readLayouts();
@@ -426,6 +450,25 @@ document.getElementById('save-layout-btn').addEventListener('click', async () =>
   ipcRenderer.send('save-all-request', name);
 });
 
+// Re-saves the CURRENTLY active preset in place, under its exact existing
+// name - same round trip as SAVE ALL AS but skips the naming prompt, so
+// there's no chance of a retyped name silently creating a near-duplicate
+// preset instead of updating the one you meant (that's exactly how a
+// "Defaiult" typo preset can end up sitting next to "Default").
+document.getElementById('update-layout-btn').addEventListener('click', () => {
+  ipcRenderer.send('save-all-request', layoutsData.activePreset);
+});
+
+// Deletes the active preset. Retyping its name is the confirmation step
+// (same jarvisPrompt-based pattern as everywhere else in this app - no
+// native confirm(), which can render behind these fullscreen windows).
+document.getElementById('delete-layout-btn').addEventListener('click', async () => {
+  const name = layoutsData.activePreset;
+  const typed = await window.jarvisPrompt(`Type "${name}" to permanently delete this preset:`);
+  if (typed !== name) return;
+  ipcRenderer.send('delete-preset-request', name);
+});
+
 // Confirms the save actually landed - writeLayouts() + the report-layout
 // round trip are otherwise silent, which reads as "did that even work?"
 ipcRenderer.on('save-all-complete', (event, presetName) => {
@@ -434,10 +477,16 @@ ipcRenderer.on('save-all-complete', (event, presetName) => {
   }
 });
 
+ipcRenderer.on('preset-deleted', (event, { presetName, newActivePreset }) => {
+  if (window.jarvisToast) {
+    window.jarvisToast('Preset deleted', `"${presetName}" removed — switched to "${newActivePreset}".`);
+  }
+});
+
 // Main process asks every open window to report its current grid so a
-// save-all can bundle them into one linked preset. Prune first so an
-// off-screen tile - however it got that way - never actually makes it into
-// a saved preset.
+// save-all can bundle them into one linked preset. Warn about anything
+// off-screen right before it saves - purely informational, the save still
+// captures the exact arrangement as-is, off-screen tiles included.
 ipcRenderer.on('report-layout', () => {
   pruneOffscreenItems('before this layout was saved');
   const items = grid.save(false).map((it) => {
@@ -515,11 +564,12 @@ ipcRenderer.on('force-refresh-node', (event, nodeId) => {
 });
 
 // ---- in-page prompt, replacing window.prompt() ----
-// Native OS dialogs (window.prompt/confirm) can end up rendered behind an
-// exclusive-fullscreen window on Windows - which is exactly what this app's
-// windows are. A blocked/invisible prompt looks identical to "nothing
-// happened," which is exactly what SAVE ALL AS... looked like. This is an
-// in-DOM replacement so there's no native dialog to get hidden.
+// Native OS dialogs (window.prompt/confirm) could end up rendered behind an
+// exclusive-fullscreen window on Windows (back when these windows used
+// fullscreen: true - since removed, see main.js, but no reason to bring
+// native dialogs back). A blocked/invisible prompt looks identical to
+// "nothing happened," which is exactly what SAVE ALL AS... looked like.
+// This is an in-DOM replacement so there's no native dialog to get hidden.
 function jarvisPrompt(message, defaultValue = '') {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');

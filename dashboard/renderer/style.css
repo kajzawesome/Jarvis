@@ -188,6 +188,22 @@ body::before {
   font-weight: 700;
 }
 
+.topbar button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+#delete-layout-btn {
+  color: var(--red);
+  border-color: #5c1010;
+}
+
+#delete-layout-btn:hover:not(:disabled) {
+  background: rgba(255, 60, 60, 0.12);
+  box-shadow: 0 0 10px rgba(255, 60, 60, 0.3);
+}
+
 .win-controls {
   display: flex;
   gap: 6px;
@@ -235,6 +251,10 @@ body::before {
 }
 
 .palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   border: 1px dashed var(--green-dim);
   color: var(--white);
   font-size: 11px;
@@ -251,8 +271,34 @@ body::before {
 }
 
 .palette-item.placed {
-  opacity: 0.35;
-  cursor: not-allowed;
+  opacity: 0.6;
+  cursor: default;
+}
+
+.palette-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-item-remove {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.palette-item-remove:hover {
+  background: var(--red);
+  color: #1a0505;
+  opacity: 1;
 }
 
 .grid-wrap {
