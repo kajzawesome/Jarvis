@@ -1,7 +1,7 @@
 const collector = require('./collector.js');
 
 const VIEW_KEY = 'jarvis-google-calendar-view';
-const VIEWS = ['list', 'week', 'month'];
+const VIEWS = ['list', 'day', 'week', 'month'];
 
 function getView() {
   const saved = localStorage.getItem(VIEW_KEY);
@@ -11,6 +11,14 @@ function getView() {
 function setView(mode) {
   localStorage.setItem(VIEW_KEY, mode);
 }
+
+// Which day DAY view is currently showing, as an offset from today (0 =
+// today). Deliberately not persisted (localStorage) like the view mode is -
+// this is a transient "I'm browsing forward a bit" state, and should land
+// back on today next time you open the tile, not wherever you last paged
+// to. A module-level variable is enough since this module is require()'d
+// once per renderer and stays cached across refresh() calls.
+let dayOffset = 0;
 
 function fmtWhen(event) {
   if (!event.start) return '';
@@ -60,6 +68,32 @@ function renderList(events) {
             </div>`
           )
           .join('') || '<div class="foot-line">nothing upcoming</div>'
+      }
+    </div>
+  `;
+}
+
+function renderDay(events) {
+  const day = new Date();
+  day.setDate(day.getDate() + dayOffset);
+  const dayEvents = (groupByDay(events)[dateKey(day)] || []).slice();
+
+  return `
+    <div class="cal-day-nav">
+      <button class="hud-btn cal-day-nav-btn" data-day-nav="-1" title="previous day">‹</button>
+      <span class="cal-day-label">${day.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}${dayOffset === 0 ? ' · TODAY' : ''}</span>
+      <button class="hud-btn cal-day-nav-btn" data-day-nav="1" title="next day">›</button>
+    </div>
+    <div class="fit-zone">
+      ${
+        dayEvents
+          .map(
+            (e) => `<div class="row">
+              <span class="row-label" style="width:auto;flex:1;">${e.title}</span>
+              <span class="row-value">${fmtTime(e)}</span>
+            </div>`
+          )
+          .join('') || '<div class="foot-line">nothing scheduled</div>'
       }
     </div>
   `;
@@ -153,6 +187,85 @@ function renderMonth(events) {
   `;
 }
 
+function toDateInputValue(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// In-DOM modal, not window.prompt() - native dialogs are avoided project-
+// wide (see dashboard/README.md's "Prompts" section), and this needs
+// multiple fields anyway, which window.jarvisPrompt (single text field)
+// can't do. Defaults the date to whatever day is currently in view (DAY
+// view's dayOffset if that's the active view, otherwise today).
+function openAddEventModal(container) {
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + (getView() === 'day' ? dayOffset : 0));
+
+  const overlay = document.createElement('div');
+  overlay.className = 'jarvis-modal-overlay';
+  overlay.innerHTML = `
+    <div class="jarvis-modal cal-add-modal">
+      <div class="jarvis-modal-message">ADD EVENT</div>
+      <input type="text" class="app-picker-search jarvis-modal-input" data-field="title" placeholder="Title" />
+      <div class="cal-add-modal-row">
+        <input type="date" class="app-picker-search jarvis-modal-input" data-field="date" value="${toDateInputValue(defaultDate)}" />
+        <input type="time" class="app-picker-search jarvis-modal-input" data-field="time" value="12:00" />
+      </div>
+      <label class="cal-add-modal-allday">
+        <input type="checkbox" data-field="allDay" /> All day
+      </label>
+      <div class="cal-add-modal-error" data-error></div>
+      <div class="btn-row">
+        <button class="hud-btn" data-action="cancel">CANCEL</button>
+        <button class="hud-btn" data-action="add">ADD</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const titleInput = overlay.querySelector('[data-field="title"]');
+  const timeInput = overlay.querySelector('[data-field="time"]');
+  const allDayInput = overlay.querySelector('[data-field="allDay"]');
+  const errorEl = overlay.querySelector('[data-error]');
+  titleInput.focus();
+
+  allDayInput.addEventListener('change', () => {
+    timeInput.disabled = allDayInput.checked;
+  });
+
+  function close() {
+    overlay.remove();
+  }
+  overlay.querySelector('[data-action="cancel"]').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+
+  overlay.querySelector('[data-action="add"]').addEventListener('click', async () => {
+    const title = titleInput.value.trim();
+    const date = overlay.querySelector('[data-field="date"]').value;
+    const allDay = allDayInput.checked;
+    const time = timeInput.value;
+    if (!title || !date || (!allDay && !time)) {
+      errorEl.textContent = 'title and date are required';
+      return;
+    }
+    const addBtn = overlay.querySelector('[data-action="add"]');
+    addBtn.disabled = true;
+    addBtn.textContent = 'ADDING...';
+    try {
+      await collector.addEvent({ title, date, time, allDay });
+      close();
+      const fresh = await collector.getEvents();
+      render(container, fresh);
+      if (window.jarvisToast) window.jarvisToast('Event added', `"${title}" added to your calendar.`);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      addBtn.disabled = false;
+      addBtn.textContent = 'ADD';
+    }
+  });
+}
+
 function render(container, data) {
   if (!data) {
     container.innerHTML = `<div class="node-empty">NO SIGNAL</div>`;
@@ -193,12 +306,14 @@ function render(container, data) {
 
   const events = data.metrics.events || [];
   const view = getView();
-  const body = view === 'week' ? renderWeek(events) : view === 'month' ? renderMonth(events) : renderList(events);
+  const body =
+    view === 'day' ? renderDay(events) : view === 'week' ? renderWeek(events) : view === 'month' ? renderMonth(events) : renderList(events);
 
   container.innerHTML = `
     <div class="stat-block cal-block">
       <div class="cal-view-toggle">
         ${VIEWS.map((v) => `<button class="cal-view-btn${v === view ? ' active' : ''}" data-view="${v}">${v.toUpperCase()}</button>`).join('')}
+        <button class="hud-btn cal-add-btn" data-action="add-event" title="Add event">+</button>
       </div>
       ${body}
     </div>
@@ -210,6 +325,25 @@ function render(container, data) {
       render(container, data);
     });
   });
+
+  container.querySelector('[data-action="add-event"]').addEventListener('click', () => openAddEventModal(container));
+
+  const prevDayBtn = container.querySelector('[data-day-nav="-1"]');
+  if (prevDayBtn) {
+    prevDayBtn.addEventListener('click', () => {
+      // No point paging before today - the API never returns past events,
+      // so anything before today would just always show "nothing scheduled".
+      dayOffset = Math.max(0, dayOffset - 1);
+      render(container, data);
+    });
+  }
+  const nextDayBtn = container.querySelector('[data-day-nav="1"]');
+  if (nextDayBtn) {
+    nextDayBtn.addEventListener('click', () => {
+      dayOffset += 1;
+      render(container, data);
+    });
+  }
 }
 
 module.exports = { render };

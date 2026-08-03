@@ -6,7 +6,13 @@ const { URL } = require('url');
 const ENV_PATH = path.join(__dirname, '..', '.env');
 const AUTH_PORT = 17565;
 const REDIRECT_URI = `http://127.0.0.1:${AUTH_PORT}`;
-const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+// calendar.events (not the broader calendar.readonly/calendar scopes) is
+// the minimal scope that covers both listing AND creating events, without
+// also granting calendar-settings/sharing access this app has no use for.
+// Anyone who already connected under the old calendar.readonly-only scope
+// needs to hit CONNECT again to pick up write access - re-consenting is the
+// only way to add scope to an existing token.
+const SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 function readEnv() {
   const env = {};
@@ -171,4 +177,53 @@ async function getEvents() {
   }
 }
 
-module.exports = { getEvents, connectAccount };
+// Google's all-day events use an EXCLUSIVE end date - a single-day all-day
+// event's end.date must be the day AFTER its start.date, or the API creates
+// a zero-length/invalid-looking event.
+function nextDateStr(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const next = new Date(y, m - 1, d + 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+}
+
+// { title, date: "YYYY-MM-DD", time: "HH:MM"|null, allDay }. Timed events
+// default to a 1-hour duration - no separate end-time field in the modal,
+// kept deliberately simple (edit the real event in Google Calendar directly
+// for anything more specific than "add a quick thing").
+async function addEvent({ title, date, time, allDay }) {
+  const env = readEnv();
+  const { GOOGLE_CLIENT_ID: clientId, GOOGLE_CLIENT_SECRET: clientSecret, GOOGLE_ACCESS_TOKEN: accessToken } = env;
+  if (!clientId || !clientSecret) throw new Error('not configured');
+  if (!accessToken) throw new Error('not connected');
+
+  const body = allDay
+    ? { summary: title, start: { date }, end: { date: nextDateStr(date) } }
+    : (() => {
+        const start = new Date(`${date}T${time}:00`);
+        const end = new Date(start.getTime() + 60 * 60 * 1000);
+        return { summary: title, start: { dateTime: start.toISOString() }, end: { dateTime: end.toISOString() } };
+      })();
+
+  const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  const post = (token) =>
+    fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  let res = await post(accessToken);
+  if (res.status === 401) {
+    const refreshed = await refreshToken(clientId, clientSecret, env.GOOGLE_REFRESH_TOKEN);
+    updateEnv({ GOOGLE_ACCESS_TOKEN: refreshed.access_token });
+    res = await post(refreshed.access_token);
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data.error && data.error.message) || `insert failed (${res.status})`);
+  }
+  return res.json();
+}
+
+module.exports = { getEvents, connectAccount, addEvent };

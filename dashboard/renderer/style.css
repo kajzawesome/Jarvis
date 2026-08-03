@@ -710,6 +710,58 @@ body:not(.edit-mode) .grid-stack-item[data-header-hidden='true'] .node-panel-hea
   font-weight: 700;
 }
 
+.cal-add-btn {
+  margin-left: auto;
+  font-weight: 700;
+  padding: 3px 10px;
+}
+
+.cal-day-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: none;
+  margin-bottom: 8px;
+}
+
+.cal-day-nav-btn {
+  padding: 2px 10px;
+  font-size: clamp(11px, 2.4cqi, 15px);
+}
+
+.cal-day-label {
+  font-size: clamp(9px, 2.2cqi, 13px);
+  color: var(--green);
+  letter-spacing: 1px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.cal-add-modal-row {
+  display: flex;
+  gap: 8px;
+}
+
+.cal-add-modal-row .jarvis-modal-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.cal-add-modal-allday {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--white);
+  font-size: 12px;
+}
+
+.cal-add-modal-error {
+  color: var(--red);
+  font-size: 11px;
+  min-height: 14px;
+}
+
 .todo-status-btns {
   display: flex;
   gap: 3px;
