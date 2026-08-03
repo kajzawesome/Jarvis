@@ -32,50 +32,98 @@ window.jarvisToast = (title, body) => {
 
 ipcRenderer.on('show-toast', (event, { title, body }) => showToast(title, body));
 
-// ---- theme presets ----
-// Every shared HUD class (buttons, borders, glow, the ambient background,
-// text) reads these same 3 CSS custom properties (--green/--green-dim/
-// --green-faint/--glow) from :root in style.css - the property names stuck
-// with the original green theme's naming, but they're just the "accent
-// color" slots now, regardless of which preset is active. Applying a theme
-// is just overriding those 4 custom properties on the root element - no
-// separate stylesheet per theme, no class-per-theme CSS to maintain.
-const THEMES = {
-  green: {
-    green: '#00ff9c',
-    greenDim: '#0a5c38',
-    greenFaint: '#063321',
-    glow: '0 0 6px rgba(0, 255, 156, 0.55), 0 0 18px rgba(0, 255, 156, 0.15)',
+// ---- theme presets (accent color x light/dark mode) ----
+// Two independent axes rather than hand-authoring a full palette per
+// combination: ACCENTS is just one base hex per preset, MODES defines the
+// page background/text and which direction (toward black or toward white)
+// the "dim"/"faint" shades mix. applyTheme() computes the actual CSS custom
+// properties from these at runtime via simple RGB lerping - adding a 10th
+// accent or a 3rd mode later is one table entry, not N new hand-picked
+// hex triples.
+const ACCENTS = {
+  green: '#00ff9c',
+  blue: '#00c3ff',
+  orange: '#ff8c00',
+  purple: '#b877ff',
+  red: '#ff5566',
+  yellow: '#ffe600',
+  pink: '#ff66c4',
+  monochrome: '#e8e8e8',
+  retro: '#4dff66',
+};
+
+const MODES = {
+  dark: {
+    bg: '#020403',
+    bgPanel: 'rgba(4, 14, 9, 0.82)',
+    bgPanelSolid: '#05130b',
+    text: '#eafff2',
+    mixTarget: '#000000',
+    dimMix: 0.65,
+    faintMix: 0.85,
   },
-  blue: {
-    green: '#00c3ff',
-    greenDim: '#0a4a6b',
-    greenFaint: '#052635',
-    glow: '0 0 6px rgba(0, 195, 255, 0.55), 0 0 18px rgba(0, 195, 255, 0.15)',
-  },
-  amber: {
-    green: '#ffb300',
-    greenDim: '#6b4a0a',
-    greenFaint: '#352505',
-    glow: '0 0 6px rgba(255, 179, 0, 0.55), 0 0 18px rgba(255, 179, 0, 0.15)',
-  },
-  purple: {
-    green: '#b877ff',
-    greenDim: '#4a2a6b',
-    greenFaint: '#251535',
-    glow: '0 0 6px rgba(184, 119, 255, 0.55), 0 0 18px rgba(184, 119, 255, 0.15)',
+  light: {
+    bg: '#eef2f0',
+    bgPanel: 'rgba(255, 255, 255, 0.85)',
+    bgPanelSolid: '#ffffff',
+    text: '#0a1810',
+    // Light mode's "dim" (borders/dividers) darkens the accent instead of
+    // lightening it - a pastel border is nearly invisible on a light page.
+    // "faint" (hover backgrounds) still lightens toward white, same
+    // direction as dark mode, just a much lighter target since the page
+    // itself is already light.
+    dimMixTarget: '#000000',
+    dimMix: 0.35,
+    faintMixTarget: '#ffffff',
+    faintMix: 0.9,
   },
 };
 
-function applyTheme(name) {
-  const theme = THEMES[name] || THEMES.green;
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function rgbToHex([r, g, b]) {
+  return '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+}
+
+function mixHex(hex, targetHex, amount) {
+  const [r1, g1, b1] = hexToRgb(hex);
+  const [r2, g2, b2] = hexToRgb(targetHex);
+  return rgbToHex([r1 + (r2 - r1) * amount, g1 + (g2 - g1) * amount, b1 + (b2 - b1) * amount]);
+}
+
+function applyTheme(accentName, modeName) {
+  const accent = ACCENTS[accentName] ? accentName : 'green';
+  const mode = MODES[modeName] ? modeName : 'dark';
+  const accentHex = ACCENTS[accent];
+  const m = MODES[mode];
+
+  const dimTarget = m.dimMixTarget || m.mixTarget;
+  const faintTarget = m.faintMixTarget || m.mixTarget;
+  const dimHex = mixHex(accentHex, dimTarget, m.dimMix);
+  const faintHex = mixHex(accentHex, faintTarget, m.faintMix);
+  const [r, g, b] = hexToRgb(accentHex);
+
   const root = document.documentElement.style;
-  root.setProperty('--green', theme.green);
-  root.setProperty('--green-dim', theme.greenDim);
-  root.setProperty('--green-faint', theme.greenFaint);
-  root.setProperty('--glow', theme.glow);
-  const select = document.getElementById('theme-select');
-  if (select) select.value = THEMES[name] ? name : 'green';
+  root.setProperty('--bg', m.bg);
+  root.setProperty('--bg-panel', m.bgPanel);
+  root.setProperty('--bg-panel-solid', m.bgPanelSolid);
+  root.setProperty('--white', m.text);
+  root.setProperty('--green', accentHex);
+  root.setProperty('--green-dim', dimHex);
+  root.setProperty('--green-faint', faintHex);
+  root.setProperty('--green-rgb', `${r}, ${g}, ${b}`);
+  root.setProperty('--glow', `0 0 6px rgba(${r}, ${g}, ${b}, 0.55), 0 0 18px rgba(${r}, ${g}, ${b}, 0.15)`);
+
+  const themeSelectEl = document.getElementById('theme-select');
+  if (themeSelectEl) themeSelectEl.value = accent;
+  const modeBtn = document.getElementById('mode-toggle');
+  if (modeBtn) {
+    modeBtn.textContent = mode === 'light' ? 'LIGHT MODE' : 'DARK MODE';
+    modeBtn.classList.toggle('active', mode === 'light');
+  }
 }
 
 const ROOT = path.resolve(__dirname, '..', '..'); // Jarvis/
@@ -409,10 +457,72 @@ function renderPalette() {
       item.draggable = true;
       item.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('text/node-id', node.id);
+        // HTML5 drag-and-drop deliberately can't read dataTransfer during
+        // dragover (only at drop, for security reasons) - tracking the
+        // dragged node id in a plain variable instead is what lets the
+        // live preview below know what size box to draw as the cursor
+        // moves, without waiting for the actual drop.
+        draggedNodeId = node.id;
+      });
+      item.addEventListener('dragend', () => {
+        draggedNodeId = null;
+        removeDragPreview();
       });
     }
     list.appendChild(item);
   });
+}
+
+// ---- drag preview: dashed outline showing where a dragged node will land ----
+let draggedNodeId = null;
+
+// Deliberately computed here rather than via GridStack's own
+// getCellFromPixel() for the row (y) - that method derives row height from
+// the grid's current total rendered height divided by however many rows
+// are occupied (gs-current-row), which is fine for GridStack's own internal
+// drag/resize but drifts from the fixed cell size (GRID_CELL_HEIGHT +
+// GRID_MARGIN) this app actually renders tiles at, especially on a
+// near-empty grid. Column math (x) doesn't have that problem - width is
+// stable regardless of content - so that part alone comes from the grid's
+// own bounding box.
+function computeDragCell(e) {
+  const box = grid.el.getBoundingClientRect();
+  const cols = grid.getColumn();
+  const cellW = box.width / cols;
+  const x = Math.floor((e.clientX - box.left) / cellW);
+  const y = Math.floor((e.clientY - box.top) / (GRID_CELL_HEIGHT + GRID_MARGIN));
+  return { x, y, cellW };
+}
+
+function updateDragPreview(e) {
+  const node = NODES[draggedNodeId];
+  if (!node) return;
+  const w = node.defaultSize?.w || 4;
+  const h = node.defaultSize?.h || 4;
+  const cols = grid.getColumn();
+  const rows = maxVisibleRows();
+  const { x: rawX, y: rawY, cellW } = computeDragCell(e);
+  const x = Math.max(0, Math.min(rawX, cols - w));
+  const y = Math.max(0, rawY);
+  const fits = y + h <= rows && grid.isAreaEmpty(x, y, w, h);
+
+  let el = document.getElementById('drag-preview-outline');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'drag-preview-outline';
+    el.className = 'drag-preview-outline';
+    grid.el.appendChild(el);
+  }
+  el.style.left = `${x * cellW}px`;
+  el.style.top = `${y * (GRID_CELL_HEIGHT + GRID_MARGIN)}px`;
+  el.style.width = `${w * cellW - GRID_MARGIN}px`;
+  el.style.height = `${h * (GRID_CELL_HEIGHT + GRID_MARGIN) - GRID_MARGIN}px`;
+  el.classList.toggle('no-fit', !fits);
+}
+
+function removeDragPreview() {
+  const el = document.getElementById('drag-preview-outline');
+  if (el) el.remove();
 }
 
 // ---- layout load/save ----
@@ -454,13 +564,37 @@ applyLayout(itemsForThisScreen(layoutsData));
 
 const gridWrap = document.querySelector('.grid-wrap');
 gridWrap.addEventListener('dragover', (e) => {
-  if (editMode) e.preventDefault();
+  if (!editMode) return;
+  e.preventDefault();
+  if (draggedNodeId) updateDragPreview(e);
+});
+gridWrap.addEventListener('dragleave', (e) => {
+  // dragleave fires when moving between child elements too, not just when
+  // actually leaving grid-wrap - only clear the preview once the cursor is
+  // genuinely outside it (or its subtree).
+  if (!gridWrap.contains(e.relatedTarget)) removeDragPreview();
 });
 gridWrap.addEventListener('drop', (e) => {
   if (!editMode) return;
   e.preventDefault();
   const nodeId = e.dataTransfer.getData('text/node-id');
-  if (nodeId) addNodeToGrid(nodeId, {});
+  removeDragPreview();
+  if (!nodeId) return;
+  const node = NODES[nodeId];
+  if (!node) return;
+  // Drop exactly where the preview showed, if that spot is still actually
+  // valid - otherwise fall back to the normal bounds-checked auto-slot
+  // search (addNodeToGrid's default when no x/y is given), same as before
+  // this feature existed.
+  const w = node.defaultSize?.w || 4;
+  const h = node.defaultSize?.h || 4;
+  const cols = grid.getColumn();
+  const rows = maxVisibleRows();
+  const { x: rawX, y: rawY } = computeDragCell(e);
+  const x = Math.max(0, Math.min(rawX, cols - w));
+  const y = Math.max(0, rawY);
+  const dropSpotValid = y + h <= rows && grid.isAreaEmpty(x, y, w, h);
+  addNodeToGrid(nodeId, dropSpotValid ? { x, y } : {});
 });
 
 // Every screen has its own grid content, but presets are linked: switching
@@ -490,17 +624,43 @@ reduceMotionBtn.addEventListener('click', async () => {
 });
 ipcRenderer.on('reduce-motion-changed', (event, on) => applyReduceMotion(on));
 
-// Global (not per-screen) accent color theme - same broadcast pattern as
-// reduce-motion above. THEMES/applyTheme are defined near the top of this
-// file (before node discovery) so a node's very first render already has
-// the right colors, not just the default green for one frame.
+// Global (not per-screen) accent color + light/dark mode - same broadcast
+// pattern as reduce-motion above. ACCENTS/MODES/applyTheme are defined near
+// the top of this file (before node discovery) so a node's very first
+// render already has the right colors, not just default green-on-dark for
+// one frame. Accent and mode are independent settings/IPC channels, but
+// applying either always re-applies both together, since applyTheme()
+// computes the full palette from both at once.
 const themeSelect = document.getElementById('theme-select');
-ipcRenderer.invoke('get-theme').then(applyTheme);
-themeSelect.addEventListener('change', async () => {
-  const name = await ipcRenderer.invoke('set-theme', themeSelect.value);
-  applyTheme(name);
+const modeBtn = document.getElementById('mode-toggle');
+let currentAccent = 'green';
+let currentMode = 'dark';
+
+Promise.all([ipcRenderer.invoke('get-theme'), ipcRenderer.invoke('get-mode')]).then(([accent, mode]) => {
+  currentAccent = accent;
+  currentMode = mode;
+  applyTheme(currentAccent, currentMode);
 });
-ipcRenderer.on('theme-changed', (event, name) => applyTheme(name));
+
+themeSelect.addEventListener('change', async () => {
+  currentAccent = await ipcRenderer.invoke('set-theme', themeSelect.value);
+  applyTheme(currentAccent, currentMode);
+});
+
+modeBtn.addEventListener('click', async () => {
+  const next = currentMode === 'dark' ? 'light' : 'dark';
+  currentMode = await ipcRenderer.invoke('set-mode', next);
+  applyTheme(currentAccent, currentMode);
+});
+
+ipcRenderer.on('theme-changed', (event, accent) => {
+  currentAccent = accent;
+  applyTheme(currentAccent, currentMode);
+});
+ipcRenderer.on('mode-changed', (event, mode) => {
+  currentMode = mode;
+  applyTheme(currentAccent, currentMode);
+});
 
 function switchPreset(name) {
   if (!layoutsData.presets[name]) return false;

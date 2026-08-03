@@ -5,6 +5,12 @@
   --green: #00ff9c;
   --green-dim: #0a5c38;
   --green-faint: #063321;
+  /* Comma-separated R,G,B of --green, kept in sync by applyTheme() in
+     app.js - needed anywhere an rgba() with a variable alpha is used
+     (rgba() can't take a hex + separate alpha, only r/g/b/a components),
+     which is how the ambient background below stays theme-aware instead
+     of staying hardcoded green regardless of the selected theme. */
+  --green-rgb: 0, 255, 156;
   --white: #eafff2;
   --red: #ff3b3b;
   --glow: 0 0 6px rgba(0, 255, 156, 0.55), 0 0 18px rgba(0, 255, 156, 0.15);
@@ -43,8 +49,8 @@ body::before {
   z-index: 999;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(0, 255, 156, 0.025) 0px,
-    rgba(0, 255, 156, 0.025) 1px,
+    rgba(var(--green-rgb), 0.025) 0px,
+    rgba(var(--green-rgb), 0.025) 1px,
     transparent 2px,
     transparent 3px
   );
@@ -62,8 +68,8 @@ body::before {
 .hud-bg-grid {
   position: absolute;
   inset: -60px;
-  background-image: linear-gradient(rgba(0, 255, 156, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 156, 0.05) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(var(--green-rgb), 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--green-rgb), 0.05) 1px, transparent 1px);
   background-size: 56px 56px;
   animation: hud-grid-drift 50s linear infinite;
 }
@@ -83,7 +89,7 @@ body::before {
   right: 0;
   height: 140px;
   top: -140px;
-  background: linear-gradient(to bottom, transparent, rgba(0, 255, 156, 0.05), transparent);
+  background: linear-gradient(to bottom, transparent, rgba(var(--green-rgb), 0.05), transparent);
   animation: hud-scan-sweep 11s ease-in-out infinite;
 }
 
@@ -107,7 +113,7 @@ body::before {
   height: 70vmax;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 255, 156, 0.07), transparent 65%);
+  background: radial-gradient(circle, rgba(var(--green-rgb), 0.07), transparent 65%);
   animation: hud-glow-pulse 8s ease-in-out infinite;
 }
 
@@ -154,9 +160,9 @@ body.reduce-motion .hud-bg-glow {
   align-items: center;
   gap: 16px;
   padding: 10px 18px;
-  background: linear-gradient(180deg, #06140d, #020a06);
+  background: linear-gradient(180deg, var(--bg-panel-solid), var(--bg));
   border-bottom: 1px solid var(--green-dim);
-  box-shadow: 0 0 14px rgba(0, 255, 156, 0.12);
+  box-shadow: 0 0 14px rgba(var(--green-rgb), 0.12);
   -webkit-app-region: drag;
 }
 
@@ -331,7 +337,27 @@ body.reduce-motion .hud-bg-glow {
   border-radius: 2px;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 0 24px rgba(0, 255, 156, 0.04);
+  box-shadow: inset 0 0 24px rgba(var(--green-rgb), 0.04);
+}
+
+/* Live preview while dragging a node in from the palette - shows exactly
+   where it'll land if dropped here, sized to its defaultSize. Green/dashed
+   when the spot is actually empty and on-screen, red when it isn't (drop
+   still works either way - see the drop handler - just falls back to
+   auto-placement instead of landing here). */
+.drag-preview-outline {
+  position: absolute;
+  border: 2px dashed var(--green);
+  border-radius: 2px;
+  background: var(--green-faint);
+  opacity: 0.65;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.drag-preview-outline.no-fit {
+  border-color: var(--red);
+  background: rgba(255, 59, 59, 0.1);
 }
 
 .grid-stack-item-content::before,
@@ -1079,7 +1105,7 @@ body:not(.edit-mode) .grid-stack-item[data-header-hidden='true'] .node-panel-hea
   height: clamp(22px, 5.5cqi, 42px);
   flex: none;
   object-fit: contain;
-  filter: drop-shadow(0 0 4px rgba(0, 255, 156, 0.5));
+  filter: drop-shadow(0 0 4px rgba(var(--green-rgb), 0.5));
 }
 
 .link-tile-label {

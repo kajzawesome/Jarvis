@@ -340,11 +340,12 @@ ipcMain.handle('toggle-reduce-motion', () => {
   return next;
 });
 
-// The theme PRESET NAMES are validated here (not just trusted from the
+// The preset/mode NAMES are validated here (not just trusted from the
 // renderer) since this writes straight to config.json - the actual color
-// values themselves live in renderer/app.js's THEMES table, main.js has no
-// reason to know what a "blue" theme actually looks like.
-const THEME_NAMES = ['green', 'blue', 'amber', 'purple'];
+// values themselves live in renderer/app.js's ACCENTS/MODES tables, main.js
+// has no reason to know what a "blue" accent or "light" mode looks like.
+const THEME_NAMES = ['green', 'blue', 'orange', 'purple', 'red', 'yellow', 'pink', 'monochrome', 'retro'];
+const MODE_NAMES = ['dark', 'light'];
 
 ipcMain.handle('get-theme', () => {
   const t = readConfig().theme;
@@ -357,5 +358,19 @@ ipcMain.handle('set-theme', (event, name) => {
   cfg.theme = name;
   writeConfig(cfg);
   windows.forEach((w) => !w.isDestroyed() && w.webContents.send('theme-changed', name));
+  return name;
+});
+
+ipcMain.handle('get-mode', () => {
+  const m = readConfig().mode;
+  return MODE_NAMES.includes(m) ? m : 'dark';
+});
+
+ipcMain.handle('set-mode', (event, name) => {
+  if (!MODE_NAMES.includes(name)) return readConfig().mode || 'dark';
+  const cfg = readConfig();
+  cfg.mode = name;
+  writeConfig(cfg);
+  windows.forEach((w) => !w.isDestroyed() && w.webContents.send('mode-changed', name));
   return name;
 });
