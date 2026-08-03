@@ -61,21 +61,32 @@ const MODES = {
     mixTarget: '#000000',
     dimMix: 0.65,
     faintMix: 0.85,
+    // Soft additive bloom - reads well against a near-black page, which is
+    // exactly what "glow" means on a dark background.
+    glow: (r, g, b) => `0 0 6px rgba(${r}, ${g}, ${b}, 0.55), 0 0 18px rgba(${r}, ${g}, ${b}, 0.15)`,
   },
   light: {
-    bg: '#eef2f0',
-    bgPanel: 'rgba(255, 255, 255, 0.85)',
-    bgPanelSolid: '#ffffff',
-    text: '#0a1810',
+    // Not pure white - a flat white page made borders/hovers disappear
+    // ("washed out") and gave the whole HUD a stark, un-HUD-like blankness.
+    // A little grey/green in the base tone keeps panel edges legible.
+    bg: '#dbe3df',
+    bgPanel: 'rgba(255, 255, 255, 0.92)',
+    bgPanelSolid: '#f5f8f6',
+    text: '#0f1f16',
     // Light mode's "dim" (borders/dividers) darkens the accent instead of
     // lightening it - a pastel border is nearly invisible on a light page.
-    // "faint" (hover backgrounds) still lightens toward white, same
-    // direction as dark mode, just a much lighter target since the page
-    // itself is already light.
+    // "faint" (hover backgrounds) still lightens toward white, but far less
+    // than before (was 0.9) - at that amount it was nearly indistinguishable
+    // from the page background, which read as "washed out."
     dimMixTarget: '#000000',
-    dimMix: 0.35,
+    dimMix: 0.5,
     faintMixTarget: '#ffffff',
-    faintMix: 0.9,
+    faintMix: 0.72,
+    // A diffuse additive bloom barely shows up against a light page (it's
+    // literally adding light to something already light) - a tighter,
+    // higher-alpha halo plus a real drop shadow for depth reads as "glowing
+    // panel" instead of "slightly blurry" on a light background.
+    glow: (r, g, b) => `0 0 3px rgba(${r}, ${g}, ${b}, 0.8), 0 0 9px rgba(${r}, ${g}, ${b}, 0.35), 0 1px 3px rgba(0, 0, 0, 0.12)`,
   },
 };
 
@@ -94,6 +105,31 @@ function mixHex(hex, targetHex, amount) {
   return rgbToHex([r1 + (r2 - r1) * amount, g1 + (g2 - g1) * amount, b1 + (b2 - b1) * amount]);
 }
 
+// Desktop-links' icons are extracted once and permanently recolored into a
+// green duotone as real PNG pixels (see desktop-links/extract-icon.ps1) -
+// there's no live source to re-recolor when the theme changes. Rather than
+// re-extracting on every theme switch, a CSS hue-rotate approximates it:
+// rotating by (accent's hue - green's hue) shifts the baked-in green
+// duotone toward the new accent's hue while keeping its light/dark
+// structure intact. Monochrome desaturates instead of rotating.
+function hexToHue([r, g, b]) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 0;
+  let h;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h *= 60;
+  return h < 0 ? h + 360 : h;
+}
+
+const GREEN_ICON_HUE = hexToHue(hexToRgb(ACCENTS.green));
+
 function applyTheme(accentName, modeName) {
   const accent = ACCENTS[accentName] ? accentName : 'green';
   const mode = MODES[modeName] ? modeName : 'dark';
@@ -104,7 +140,8 @@ function applyTheme(accentName, modeName) {
   const faintTarget = m.faintMixTarget || m.mixTarget;
   const dimHex = mixHex(accentHex, dimTarget, m.dimMix);
   const faintHex = mixHex(accentHex, faintTarget, m.faintMix);
-  const [r, g, b] = hexToRgb(accentHex);
+  const rgb = hexToRgb(accentHex);
+  const [r, g, b] = rgb;
 
   const root = document.documentElement.style;
   root.setProperty('--bg', m.bg);
@@ -115,7 +152,11 @@ function applyTheme(accentName, modeName) {
   root.setProperty('--green-dim', dimHex);
   root.setProperty('--green-faint', faintHex);
   root.setProperty('--green-rgb', `${r}, ${g}, ${b}`);
-  root.setProperty('--glow', `0 0 6px rgba(${r}, ${g}, ${b}, 0.55), 0 0 18px rgba(${r}, ${g}, ${b}, 0.15)`);
+  root.setProperty('--glow', m.glow(r, g, b));
+
+  const hueRotate = accent === 'monochrome' ? 0 : hexToHue(rgb) - GREEN_ICON_HUE;
+  root.setProperty('--icon-hue-rotate', `${hueRotate}deg`);
+  root.setProperty('--icon-saturate', accent === 'monochrome' ? '0' : '1');
 
   const themeSelectEl = document.getElementById('theme-select');
   if (themeSelectEl) themeSelectEl.value = accent;
