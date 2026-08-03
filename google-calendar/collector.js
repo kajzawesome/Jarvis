@@ -135,9 +135,18 @@ async function getEvents() {
   }
 
   try {
+    // Wide enough to cover both the week and month schedule views (see
+    // widget.js) with one fetch, not just the short "next 6" list - up to
+    // 6 weeks out covers a full month-grid's worth of upcoming events.
+    // maxResults raised to match; still ordered/singleEvents so recurring
+    // events expand into their real individual occurrences.
+    const timeMax = new Date();
+    timeMax.setDate(timeMax.getDate() + 42);
     const url =
       'https://www.googleapis.com/calendar/v3/calendars/primary/events' +
-      `?timeMin=${encodeURIComponent(new Date().toISOString())}&maxResults=6&singleEvents=true&orderBy=startTime`;
+      `?timeMin=${encodeURIComponent(new Date().toISOString())}` +
+      `&timeMax=${encodeURIComponent(timeMax.toISOString())}` +
+      '&maxResults=100&singleEvents=true&orderBy=startTime';
 
     let res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
 
